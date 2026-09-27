@@ -1,0 +1,13 @@
+[Unit]
+Description=ROS 2 Fast DDS Discovery Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=@USER@
+ExecStart=/bin/bash -c 'source /opt/ros/jazzy/setup.bash && exec fastdds discovery -i 0 -l 0.0.0.0 -p 11811'
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

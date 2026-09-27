@@ -1,199 +1,248 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Sets up the complete qb_arm environment on Ubuntu 24.04:
+# ROS 2 Jazzy, MoveIt 2, Gazebo, Azure Kinect SDK, the qb_arm workspace and system config.
+# Safe to re-run: every step checks what is already there.
+set -euo pipefail
 
-# ROS2 Workspace Installation Script
-# This script sets up ROS2 Jazzy and all dependencies for the QB Arm workspace
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-set -e  # Exit on error
+WS="$HOME/prj/ros2_ws"
+GIT_BASE="git@github.com:whoobee"
+BRANCH="develop"
+REPOS=(qb_arm qb_arm_lite6 qb_arm_kinectdk_ros2)
+DO_UPGRADE=1
+DO_KINECT=1
+DO_BUILD=1
+DO_BASHRC=1
+DO_DISCOVERY=1
+DO_REALTIME=1
+ACCEPT_K4A_EULA=0
 
-echo "=========================================="
-echo "ROS2 Jazzy + QB Arm Workspace Setup"
-echo "=========================================="
+K4A_URL="https://packages.microsoft.com/ubuntu/18.04/prod/pool/main/libk"
+K4A_DEBS=(
+    "libk4a1.4/libk4a1.4_1.4.1_amd64.deb c1c63f81641eed1326136a44e5a5fd229e1e6315b2b20b2dddb5523a556c9329"
+    "libk4a1.4-dev/libk4a1.4-dev_1.4.1_amd64.deb 08303094b9ad36ea74c19bc8b8950c97055e73dd2e8bd18e2af5e165a2289cd2"
+)
 
-# Check if running on Ubuntu
-if ! grep -qi ubuntu /etc/os-release; then
-    echo "Error: This script is designed for Ubuntu. Please install Ubuntu first."
-    exit 1
+usage() {
+    cat <<EOF
+Usage: ./install.sh [options]
+
+  --ws DIR              workspace directory (default: $WS)
+  --https               clone over HTTPS instead of SSH (repos must be readable)
+  --branch NAME         branch to check out in the qb_arm repos (default: $BRANCH)
+  --accept-k4a-eula     accept Microsoft's Azure Kinect SDK EULA without prompting
+  --no-upgrade          skip 'apt upgrade'
+  --no-kinect           skip the Azure Kinect SDK and udev rule
+  --no-build            skip rosdep install + colcon build of the workspace
+  --no-bashrc           don't add the ROS environment to ~/.bashrc
+  --no-discovery-server don't install the Fast DDS discovery server service
+  --no-realtime         don't grant real-time scheduling to this user
+  -h, --help            show this help
+EOF
+}
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --ws) WS="$(realpath -m "$2")"; shift ;;
+        --https) GIT_BASE="https://github.com/whoobee" ;;
+        --branch) BRANCH="$2"; shift ;;
+        --accept-k4a-eula) ACCEPT_K4A_EULA=1 ;;
+        --no-upgrade) DO_UPGRADE=0 ;;
+        --no-kinect) DO_KINECT=0 ;;
+        --no-build) DO_BUILD=0 ;;
+        --no-bashrc) DO_BASHRC=0 ;;
+        --no-discovery-server) DO_DISCOVERY=0 ;;
+        --no-realtime) DO_REALTIME=0 ;;
+        -h|--help) usage; exit 0 ;;
+        *) echo "Unknown option: $1"; usage; exit 1 ;;
+    esac
+    shift
+done
+
+STEP=0
+step() { STEP=$((STEP + 1)); echo; echo "=== [$STEP] $* ==="; }
+info() { echo "  - $*"; }
+die() { echo "ERROR: $*" >&2; exit 1; }
+
+# Retry flaky network commands: retry <cmd...>
+retry() {
+    local n
+    for n in 1 2 3 4; do
+        "$@" && return 0
+        [ $n -lt 4 ] && { info "failed, retrying in $((n * 5)) s..." >&2; sleep $((n * 5)); }
+    done
+    return 1
+}
+
+# ROS setup scripts reference unset variables
+source_ros() { set +u; source /opt/ros/jazzy/setup.bash; [ -f "$WS/install/setup.bash" ] && source "$WS/install/setup.bash"; set -u; }
+
+# Clone into a fresh directory (a failed attempt must not leave a partial clone behind)
+clone() { rm -rf "$3"; git clone -q -b "$1" "$2" "$3"; }
+
+apt_install() { sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "$@"; }
+
+# ---------------------------------------------------------------------------
+step "Checking system"
+[ "$EUID" -ne 0 ] || die "run as your normal user (not root/sudo); the script calls sudo itself"
+. /etc/os-release
+[ "${VERSION_CODENAME:-}" = "noble" ] || die "Ubuntu 24.04 (noble) required for ROS 2 Jazzy, found: ${PRETTY_NAME:-unknown}"
+[ "$(dpkg --print-architecture)" = "amd64" ] || die "amd64 required (the Azure Kinect SDK is amd64-only)"
+info "$PRETTY_NAME, workspace: $WS"
+sudo true  # ask for the password once, up front
+
+# ---------------------------------------------------------------------------
+step "System packages"
+sudo apt-get update
+[ $DO_UPGRADE -eq 1 ] && sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
+apt_install software-properties-common curl git rsync locales ca-certificates
+sudo add-apt-repository -y universe
+if ! locale | grep -qi 'utf-8'; then
+    sudo locale-gen en_US en_US.UTF-8
+    sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+    export LANG=en_US.UTF-8
 fi
 
-# Get Ubuntu version
-UBUNTU_VERSION=$(lsb_release -cs)
-echo "Detected Ubuntu version: $UBUNTU_VERSION"
+# ---------------------------------------------------------------------------
+step "ROS 2 apt repository"
+if dpkg -s ros2-apt-source >/dev/null 2>&1; then
+    info "ros2-apt-source already installed"
+else
+    ver=$(retry curl -fsSL https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest \
+        | grep -F '"tag_name"' | awk -F'"' '{print $4}')
+    [ -n "$ver" ] || die "could not determine the latest ros-apt-source release"
+    tmp=$(mktemp -d)
+    retry curl -fsSL -o "$tmp/ros2-apt-source.deb" \
+        "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ver}/ros2-apt-source_${ver}.${VERSION_CODENAME}_all.deb"
+    sudo apt-get install -y "$tmp/ros2-apt-source.deb"
+    rm -rf "$tmp"
+fi
+sudo apt-get update
 
-# Step 1: Update system packages
-echo ""
-echo "Step 1: Updating system packages..."
-sudo apt update
-sudo apt upgrade -y
-
-# Step 2: Install ROS2 Jazzy
-echo ""
-echo "Step 2: Installing ROS2 Jazzy..."
-
-# Add ROS2 GPG key
-sudo curl -sSL https://repo.ros2.org/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
-
-# Add ROS2 repository
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://repo.ros2.org/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
-
-# Update package list
-sudo apt update
-
-# Install ROS2 Jazzy desktop
-sudo apt install -y ros-jazzy-desktop
-
-# Install development tools
-echo ""
-echo "Step 3: Installing ROS2 development tools..."
-sudo apt install -y \
-    ros-jazzy-ros2-control \
-    ros-jazzy-ros2-controllers \
-    ros-jazzy-control-toolbox \
-    python3-rosdep \
-    python3-rosinstall \
-    python3-rosinstall-generator \
-    python3-wstool \
-    build-essential
-
-# Step 4: Install MoveIt2
-echo ""
-echo "Step 4: Installing MoveIt2..."
-sudo apt install -y \
+# ---------------------------------------------------------------------------
+step "ROS 2 Jazzy, MoveIt 2, Gazebo and tools"
+apt_install \
+    ros-jazzy-desktop \
+    ros-dev-tools \
     ros-jazzy-moveit \
-    ros-jazzy-moveit-servo \
-    ros-jazzy-moveit-task-constructor \
-    ros-jazzy-moveit-configs-utils
+    ros-jazzy-ros-gz \
+    python3-numpy \
+    python3-scipy \
+    python3-yaml
 
-# Step 5: Install Azure Kinect dependencies
-echo ""
-echo "Step 5: Installing Azure Kinect dependencies..."
-sudo apt install -y \
-    libk4a1.3 \
-    libk4a1.3-dev \
-    k4a-tools \
-    libsoundio-dev \
-    pkg-config \
-    curl
-
-# Step 6: Install perception packages
-echo ""
-echo "Step 6: Installing perception packages..."
-sudo apt install -y \
-    ros-jazzy-cv-bridge \
-    ros-jazzy-image-transport \
-    ros-jazzy-sensor-msgs \
-    ros-jazzy-pcl-ros \
-    ros-jazzy-pointcloud-to-laserscan
-
-# Step 7: Install visualization tools
-echo ""
-echo "Step 7: Installing visualization tools..."
-sudo apt install -y \
-    ros-jazzy-rviz2 \
-    ros-jazzy-rviz-imu-plugin \
-    ros-jazzy-rviz-visual-tools
-
-# Step 8: Install other dependencies
-echo ""
-echo "Step 8: Installing additional dependencies..."
-sudo apt install -y \
-    ros-jazzy-tf2 \
-    ros-jazzy-tf2-ros \
-    ros-jazzy-tf2-geometry-msgs \
-    ros-jazzy-geometry2 \
-    ros-jazzy-angles \
-    ros-jazzy-diagnostic-aggregator \
-    python3-pip \
-    git \
-    cmake
-
-# Step 9: Initialize rosdep
-echo ""
-echo "Step 9: Initializing rosdep..."
-sudo rosdep init || true
-rosdep update
-
-# Step 10: Clone required repositories
-echo ""
-echo "Step 10: Cloning QB Arm repositories..."
-cd ~/ros2_ws/src
-
-# Clone QB Arm repository
-if [ ! -d "qb_arm" ]; then
-    echo "Cloning qb_arm..."
-    git clone https://github.com/whoobee/qb_arm.git
-else
-    echo "qb_arm already exists, skipping clone..."
+# ---------------------------------------------------------------------------
+if [ $DO_KINECT -eq 1 ]; then
+    step "Azure Kinect Sensor SDK 1.4.1"
+    if dpkg -s libk4a1.4-dev >/dev/null 2>&1; then
+        info "libk4a1.4-dev already installed"
+    else
+        tmp=$(mktemp -d)
+        for entry in "${K4A_DEBS[@]}"; do
+            read -r path sha <<<"$entry"
+            info "downloading $(basename "$path")"
+            retry curl -fsSL -o "$tmp/$(basename "$path")" "$K4A_URL/$path"
+            echo "$sha  $tmp/$(basename "$path")" | sha256sum -c --quiet || die "checksum mismatch for $path"
+        done
+        # Microsoft only ships these for 18.04, but they work on 24.04.
+        # libk4a1.4 asks to accept the EULA (/usr/share/doc/libk4a1.4/LICENSE.txt after install).
+        if [ $ACCEPT_K4A_EULA -eq 1 ]; then
+            sudo ACCEPT_EULA=Y apt-get install -y "$tmp"/*.deb
+        else
+            info "libk4a1.4 will ask you to accept Microsoft's EULA"
+            sudo apt-get install -y "$tmp"/*.deb
+        fi
+        rm -rf "$tmp"
+    fi
+    info "udev rule (camera access without root)"
+    sudo install -m 644 "$HERE/config/99-k4a.rules" /etc/udev/rules.d/99-k4a.rules
+    sudo udevadm control --reload-rules
+    sudo udevadm trigger --action=add --attr-match=idVendor=045e || true
 fi
 
-# Clone QB Arm Kinect DK ROS2 repository
-if [ ! -d "qb_arm_kinectdk_ros2" ]; then
-    echo "Cloning qb_arm_kinectdk_ros2..."
-    git clone https://github.com/whoobee/qb_arm_kinectdk_ros2.git
-else
-    echo "qb_arm_kinectdk_ros2 already exists, skipping clone..."
+# ---------------------------------------------------------------------------
+step "rosdep"
+[ -f /etc/ros/rosdep/sources.list.d/20-default.list ] || sudo rosdep init
+retry rosdep update
+
+# ---------------------------------------------------------------------------
+step "Workspace and repositories"
+mkdir -p "$WS/src"
+for repo in "${REPOS[@]}"; do
+    dir="$WS/src/$repo"
+    if [ -d "$dir/.git" ]; then
+        info "$repo already cloned ($(git -C "$dir" rev-parse --abbrev-ref HEAD) @ $(git -C "$dir" rev-parse --short HEAD)), leaving it as is"
+    elif [ -e "$dir" ]; then
+        die "$dir exists but is not a git clone - move it away and re-run"
+    else
+        info "cloning $repo ($BRANCH)"
+        retry clone "$BRANCH" "$GIT_BASE/$repo.git" "$dir"
+    fi
+done
+
+# ---------------------------------------------------------------------------
+if [ $DO_BUILD -eq 1 ]; then
+    step "Workspace dependencies (rosdep)"
+    source_ros
+    # K4A = the Azure Kinect SDK, installed above from Microsoft's .debs
+    rosdep install --from-paths "$WS/src" --ignore-src --rosdistro jazzy -y --skip-keys K4A
+
+    step "Building the workspace (takes a few minutes)"
+    (cd "$WS" && colcon build --symlink-install)
 fi
 
-# Step 11: Install workspace dependencies
-echo ""
-echo "Step 10: Installing workspace dependencies..."
-cd ~/ros2_ws
-
-# Install dependencies from source packages
-if [ -f "src/package.rosinstall" ]; then
-    echo "Installing from rosinstall file..."
-    rosdep install --from-paths src --ignore-src -r -y
+# ---------------------------------------------------------------------------
+step "ROS environment"
+sed "s#@WS@#$WS#" "$HERE/config/ros_env.sh.in" > "$WS/ros_env.sh"
+info "wrote $WS/ros_env.sh"
+if [ $DO_BASHRC -eq 1 ]; then
+    line="source $WS/ros_env.sh"
+    if grep -qxF "$line" ~/.bashrc; then
+        info "$HOME/.bashrc already sources it"
+    else
+        printf '\n# ROS 2 / qb_arm workspace\n%s\n' "$line" >> ~/.bashrc
+        info "added to ~/.bashrc"
+    fi
+    if grep -qE '^source (/opt/ros/jazzy/setup\.bash|~/ros2_ws/install/setup\.bash)$' ~/.bashrc; then
+        info "NOTE: ~/.bashrc also has older ROS 'source' lines - remove them, ros_env.sh covers them"
+    fi
 fi
 
-# Install rosdeps for all packages
-rosdep install --from-paths src --ignore-src -r -y || true
-
-# Step 11: Build Python packages
-echo ""
-echo "Step 11: Installing Python dependencies..."
-pip3 install -q \
-    numpy \
-    opencv-python \
-    Pillow \
-    pyyaml
-
-# Step 12: Build the workspace
-echo ""
-echo "Step 12: Building ROS2 workspace..."
-echo "This may take several minutes..."
-colcon build --symlink-install --continue-on-error
-
-# Step 13: Source the workspace
-echo ""
-echo "Step 13: Setting up workspace sourcing..."
-
-# Add to ~/.bashrc if not already present
-if ! grep -q "source ~/ros2_ws/install/setup.bash" ~/.bashrc; then
-    echo "" >> ~/.bashrc
-    echo "# ROS2 Workspace" >> ~/.bashrc
-    echo "source /opt/ros/jazzy/setup.bash" >> ~/.bashrc
-    echo "source ~/ros2_ws/install/setup.bash" >> ~/.bashrc
+# ---------------------------------------------------------------------------
+if [ $DO_DISCOVERY -eq 1 ]; then
+    step "Fast DDS discovery server (systemd: ros2-discovery.service, UDP 11811)"
+    sed "s#@USER@#$USER#" "$HERE/config/ros2-discovery.service.in" \
+        | sudo tee /etc/systemd/system/ros2-discovery.service >/dev/null
+    sudo systemctl daemon-reload
+    sudo systemctl enable ros2-discovery.service
+    sudo systemctl restart ros2-discovery.service
+    info "status: $(systemctl is-active ros2-discovery.service)"
 fi
 
-# Step 14: Verify installation
-echo ""
-echo "=========================================="
-echo "Installation Complete!"
-echo "=========================================="
-echo ""
-echo "To activate the ROS2 environment, run:"
-echo "  source ~/.bashrc"
-echo ""
-echo "Or manually source:"
-echo "  source /opt/ros/jazzy/setup.bash"
-echo "  source ~/ros2_ws/install/setup.bash"
-echo ""
-echo "To verify installation:"
-echo "  ros2 --version"
-echo "  ros2 run demo_nodes_cpp listener &"
-echo "  ros2 run demo_nodes_cpp talker"
-echo ""
-echo "To launch the QB Arm system:"
-echo "  ros2 launch qb_arm qb_arm_launch.py"
-echo ""
-echo "For more information, see README.md files in the workspace."
-echo ""
+# ---------------------------------------------------------------------------
+if [ $DO_REALTIME -eq 1 ]; then
+    step "Real-time scheduling for ros2_control"
+    sudo groupadd -f realtime
+    sudo usermod -aG realtime "$USER"
+    sudo install -m 644 "$HERE/config/99-realtime.conf" /etc/security/limits.d/99-realtime.conf
+    info "$USER is in group 'realtime' (takes effect after the next login)"
+fi
+
+# ---------------------------------------------------------------------------
+cat <<EOF
+
+==========================================
+ qb_arm environment ready
+==========================================
+Open a new terminal (or: source $WS/ros_env.sh), then:
+
+  qbarm                 # real Lite6 (192.168.1.23) + MoveIt + RViz + Kinect
+  qbarm sim:=true       # simulated arm + Kinect
+  qbarm camera:=false   # arm only
+  kinect                # Kinect only
+
+Other machines on the network join with:
+  export ROS_DISCOVERY_SERVER=<this machine's IP>:11811 ROS_SUPER_CLIENT=TRUE
+
+Log out and back in once so the 'realtime' group applies.
+EOF
