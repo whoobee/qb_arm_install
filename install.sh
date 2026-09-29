@@ -9,7 +9,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WS="$HOME/prj/ros2_ws"
 GIT_BASE="git@github.com:whoobee"
 BRANCH="develop"
-REPOS=(qb_arm qb_arm_lite6 qb_arm_kinectdk_ros2)
+REPOS=(qb_arm qb_arm_lite6 qb_arm_kinectdk_ros2 qb_arm_vision)
 DO_UPGRADE=1
 DO_KINECT=1
 DO_BUILD=1
@@ -303,8 +303,10 @@ cat <<EOF
 ==========================================
 Open a new terminal (or: source $WS/ros_env.sh), then:
 
-  qbarm                 # real Lite6 (192.168.1.23) + MoveIt + RViz + Kinect
-  qbarm sim:=true       # simulated arm + Kinect
+  cell start real       # whole cell: real Lite6 + claw + MoveIt + RViz + Kinect + qb_arm_vision
+  cell start sim        # same with a simulated arm and claw
+  cell stop             # always stop through cell: takes every node with it
+  qbarm                 # bringup only (no vision); prefer cell
   qbarm camera:=false   # arm only
   kinect                # Kinect only
 

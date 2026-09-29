@@ -21,3 +21,5 @@ alias cb='(cd "$ROS2_WS" && colcon build --symlink-install) && source "$ROS2_WS/
 alias kinect='ros2 launch qb_arm kinect.launch.py'
 # Whole cell: Lite6 + MoveIt + RViz + ceiling Kinect (args: sim:=true, camera:=false, add_gripper:=true, robot_ip:=...)
 alias qbarm='ros2 launch qb_arm bringup.launch.py'
+# Whole cell in one process group - always start/stop through this: cell start sim|real, cell stop, cell status
+alias cell='"$ROS2_WS/install/qb_arm/lib/qb_arm/cell"'

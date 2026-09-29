@@ -33,7 +33,7 @@ Repositories (branch `develop`):
 |---|---|
 | [qb_arm](https://github.com/whoobee/qb_arm) | bringup launch files, camera pose + calibration tools |
 | [qb_arm_lite6](https://github.com/whoobee/qb_arm_lite6) | UFactory `xarm_ros2` (jazzy) – Lite6 driver, MoveIt config |
-| [qb_arm_kinectdk_ros2](https://github.com/whoobee/qb_arm_kinectdk_ros2) | Azure Kinect ROS driver, patched for Jazzy |
+| [qb_arm_kinectdk_ros2](https://github.com/whoobee/qb_arm_kinectdk_ros2, qb_arm_vision) | Azure Kinect ROS driver, patched for Jazzy |
 
 ### Options
 
