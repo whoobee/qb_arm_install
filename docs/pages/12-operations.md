@@ -70,7 +70,8 @@ ros2 topic echo --once /ufactory/robot_states | grep -E "^(state|mode|err):"
 
 1. Look at the arm: what did it touch? Is it clear to move?
 2. Clear the error and move the arm clear (UFACTORY app, or manual mode) — **not** to the zero pose.
-3. The arm is now typically in mode 0; MoveIt needs servo mode 1: `cell stop && cell start real` sets it up again.
+3. The arm is now typically in mode 0; MoveIt needs servo mode 1. The next pick request sets it back automatically
+   (only when there is no arm error); `cell stop && cell start real` works too.
 4. Detect again before the next pick (objects may have moved).
 
 Known error codes: **C31** collision caused abnormal joint current; **C16** servo error joint 6 (fixed once by

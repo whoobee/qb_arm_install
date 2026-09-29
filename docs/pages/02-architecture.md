@@ -131,6 +131,7 @@ flowchart TB
 | ESP32 firmware | qb_arm_gripper | Node `/claw/qbag_esp32`: `/claw/command`, `/claw/torque` → servo; publishes `/claw/joint_states`, voltage, temperature |
 | `claw_driver` | qb_arm | Sim only: a simulated claw with the same topics (or `claw_relay` for sim arm + real claw) |
 | `sim_ready_pose` | qb_arm | Sim only: moves the fake arm off the all-zero pose (claw inside the base) |
+| `ufactory_driver` (`/uf_api`) | xarm_ros2 (`xarm_api`) | Real arm only: UFACTORY's service driver (second connection to the controller); the pick executor uses `set_mode`/`set_state`/`motion_enable` to restore servo mode |
 | GPU server | qb_arm_vision/server | `POST /pipeline`: Grounding DINO, SAM 2, Contact-GraspNet |
 
 ## The ROS graph

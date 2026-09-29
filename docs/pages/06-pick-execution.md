@@ -14,6 +14,13 @@ Source: `qb_arm_vision/qb_arm_vision/pick_executor.py`, parameters in `config/pi
 | `/claw/command` | publisher | claw target angle |
 | MoveIt | clients | `/compute_ik`, `/move_action`, `/compute_cartesian_path`, `/execute_trajectory`, `/get_planning_scene`, `/apply_planning_scene` |
 
+**Before every pick** (also `plan_only`), on the real arm: the arm's controller state (`/ufactory/robot_states`) is
+checked. An arm **error** (`err` ≠ 0) ends the request with the error code — a person recovers the arm. If the arm is
+**not in servo mode** (mode ≠ 1, or state 4 stopped / 5 config changed — e.g. after manual/teach mode or the UFACTORY
+app), the pick enables the motors and sets mode 1 and state 0 through UFACTORY's service driver (`/uf_api/...`, started
+by the cell) and waits for the arm to confirm; the arm does not move. Without this, every trajectory is aborted with
+MoveIt error −4 until the cell restarts.
+
 The node runs a multi-threaded executor with a re-entrant callback group, so a service callback can wait for
 MoveIt replies (futures) while the executor keeps processing them. A lock rejects a second pick while one is running.
 

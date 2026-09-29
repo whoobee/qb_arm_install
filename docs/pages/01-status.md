@@ -86,6 +86,7 @@ These are worth reading: each one changed the design.
 | 12 | Pliers dropped as "height 0 cm" | The table is tilted 0.87° against the robot base (−1.7 mm at the base, −6 mm at 30 cm) and heights were measured from z = 0; minimum height 1 cm; thin metal reads flat in depth (7 mm) | `measure_table` → table plane used for heights, fingertip clearance and MoveIt's table; minimum 5 mm; clearance 3 mm |
 | 13 | Changing `fingertip_clearance` in the YAML had no effect | The vision nodes run in `/qb_arm_vision`, the YAML was keyed `object_detector:` → never applied; code defaults happened to equal the files | Keys `/**/<node>:` (also `obstacle_cloud` in `/kinect`) |
 | 14 | MoveIt's table was missing after some starts | `planning_scene_setup` waited only 10 s; move_group answers slowly right after start-up | 30 s timeout, 3 attempts |
+| 15 | Picks failed with MoveIt error −4 after the pliers were taken out of the claw | The arm had been taken out of servo mode (mode 0); ros2_control can't drive it then | Before every pick: check the arm's mode and set servo mode through `xarm_api` (`/uf_api`), started by the cell; arm errors are still left to a person |
 
 > **Safety rule born from this:** with the claw mounted, the arm's **all-zero joint pose** (xArm "home",
 > UFACTORY app "go home") puts the claw **into the robot base**. Never send the real arm there.
