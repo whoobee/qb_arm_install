@@ -17,6 +17,8 @@ DO_BASHRC=1
 DO_DISCOVERY=1
 DO_REALTIME=1
 DO_ESP=1
+DO_MICROROS=1
+GRIPPER_DIR="$HOME/prj/qb_arm_gripper"
 ACCEPT_K4A_EULA=0
 
 K4A_URL="https://packages.microsoft.com/ubuntu/18.04/prod/pool/main/libk"
@@ -39,7 +41,8 @@ Usage: ./install.sh [options]
   --no-bashrc           don't add the ROS environment to ~/.bashrc
   --no-discovery-server don't install the Fast DDS discovery server service
   --no-realtime         don't grant real-time scheduling to this user
-  --no-esp              skip the ESP32 tools (dialout, esptool, PlatformIO)
+  --no-esp              skip the ESP32 tools (dialout, esptool, PlatformIO) and the qb_arm_gripper clone
+  --no-microros-agent   skip the micro-ROS agent (build + ros2-microros-agent.service) for the gripper
   -h, --help            show this help
 EOF
 }
@@ -57,6 +60,7 @@ while [ $# -gt 0 ]; do
         --no-discovery-server) DO_DISCOVERY=0 ;;
         --no-realtime) DO_REALTIME=0 ;;
         --no-esp) DO_ESP=0 ;;
+        --no-microros-agent) DO_MICROROS=0 ;;
         -h|--help) usage; exit 0 ;;
         *) echo "Unknown option: $1"; usage; exit 1 ;;
     esac
@@ -182,6 +186,18 @@ for repo in "${REPOS[@]}"; do
         retry clone "$BRANCH" "$GIT_BASE/$repo.git" "$dir"
     fi
 done
+if [ $DO_MICROROS -eq 1 ]; then
+    # micro-ROS agent (not packaged for Jazzy): the claw's ESP32 talks to ROS through it
+    for pair in "micro-ROS-Agent micro_ros_agent_repo" "micro_ros_msgs micro_ros_msgs"; do
+        set -- $pair
+        if [ -d "$WS/src/$2/.git" ]; then
+            info "$2 already cloned, leaving it as is"
+        else
+            info "cloning $1 (jazzy)"
+            retry clone jazzy "https://github.com/micro-ROS/$1.git" "$WS/src/$2"
+        fi
+    done
+fi
 
 # ---------------------------------------------------------------------------
 if [ $DO_BUILD -eq 1 ]; then
@@ -223,6 +239,17 @@ if [ $DO_DISCOVERY -eq 1 ]; then
 fi
 
 # ---------------------------------------------------------------------------
+if [ $DO_MICROROS -eq 1 ] && [ $DO_BUILD -eq 1 ]; then
+    step "micro-ROS agent (systemd: ros2-microros-agent.service, UDP 8888)"
+    sed "s#@USER@#$USER#; s#@WS@#$WS#" "$HERE/config/ros2-microros-agent.service.in" \
+        | sudo tee /etc/systemd/system/ros2-microros-agent.service >/dev/null
+    sudo systemctl daemon-reload
+    sudo systemctl enable ros2-microros-agent.service
+    sudo systemctl restart ros2-microros-agent.service
+    info "status: $(systemctl is-active ros2-microros-agent.service)"
+fi
+
+# ---------------------------------------------------------------------------
 if [ $DO_REALTIME -eq 1 ]; then
     step "Real-time scheduling for ros2_control"
     sudo groupadd -f realtime
@@ -258,6 +285,14 @@ if [ $DO_ESP -eq 1 ]; then
     sudo udevadm control --reload-rules
     sudo udevadm trigger
     info "esptool $("$HOME/.local/bin/esptool" version | tail -1), $("$HOME/.local/bin/pio" --version)"
+    if [ -d "$GRIPPER_DIR/.git" ]; then
+        info "qb_arm_gripper already cloned, leaving it as is"
+    else
+        info "cloning qb_arm_gripper ($BRANCH) to $GRIPPER_DIR"
+        retry clone "$BRANCH" "$GIT_BASE/qb_arm_gripper.git" "$GRIPPER_DIR"
+    fi
+    [ -f "$GRIPPER_DIR/wifi.env" ] || cp "$GRIPPER_DIR/wifi.env.example" "$GRIPPER_DIR/wifi.env"
+    info "gripper firmware: fill in $GRIPPER_DIR/wifi.env, then: cd $GRIPPER_DIR && pio run -e gripper -t upload"
 fi
 
 # ---------------------------------------------------------------------------

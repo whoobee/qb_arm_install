@@ -24,7 +24,8 @@ already there. Takes roughly 15–30 minutes, mostly downloads and the workspace
 | Environment | writes `~/prj/ros2_ws/ros_env.sh` and sources it from `~/.bashrc` |
 | Network | Fast DDS discovery server as systemd service `ros2-discovery.service` (UDP 11811) |
 | Real-time | `realtime` group + `/etc/security/limits.d/99-realtime.conf` for ros2_control |
-| ESP32 | `dialout` group, pip/venv/pipx, `esptool` (pipx), PlatformIO Core (`pio`) + its udev rules |
+| ESP32 | `dialout` group, pip/venv/pipx, `esptool` (pipx), PlatformIO Core (`pio`) + its udev rules, [qb_arm_gripper](https://github.com/whoobee/qb_arm_gripper) cloned to `~/prj/qb_arm_gripper` |
+| micro-ROS agent | micro-ROS-Agent + micro_ros_msgs (jazzy) built in the workspace, systemd `ros2-microros-agent.service` on UDP 8888 for the claw's ESP32 |
 
 Repositories (branch `develop`):
 
@@ -47,7 +48,8 @@ Repositories (branch `develop`):
 --no-bashrc           don't add the ROS environment to ~/.bashrc
 --no-discovery-server don't install the Fast DDS discovery server service
 --no-realtime         don't grant real-time scheduling to this user
---no-esp              skip the ESP32 tools (dialout, esptool, PlatformIO)
+--no-esp              skip the ESP32 tools (dialout, esptool, PlatformIO) and the qb_arm_gripper clone
+--no-microros-agent   skip the micro-ROS agent (build + ros2-microros-agent.service) for the gripper
 ```
 
 The repos are private, so cloning over SSH needs a key on your GitHub account
