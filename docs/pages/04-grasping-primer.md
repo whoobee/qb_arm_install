@@ -64,7 +64,8 @@ checks), and with MoveIt before executing (full robot model, IK, planning).
 Grasp generators attach a **score** (0–1) to each candidate: an estimate of the probability that it succeeds.
 Scores from different methods are not comparable in an absolute sense; they are for ranking. In qBArm, the
 geometric grasps get fixed scores chosen to sit relative to Contact-GraspNet's typical 0.1–0.3: ring grasps 0.3
-(minus a small distance term), top-slice fallback 0.1.
+(minus a small distance term), narrow-slice grasps up to 0.2 (less towards the ends of the object), top-slice fallback
+0.1.
 
 ## How grasps are found
 
@@ -72,7 +73,7 @@ There are three families of methods; qBArm uses the first two.
 
 | Family | Idea | In qBArm |
 |---|---|---|
-| **Analytic / geometric** | Derive grasps from the object's shape: e.g. squeeze across the narrowest part of the top | Ring (rim) grasps for flat rings; top-slice fallback |
+| **Analytic / geometric** | Derive grasps from the object's shape: e.g. squeeze across the narrowest part of the top | Ring (rim) grasps for flat rings; narrow-slice grasps for flat/long objects; top-slice fallback |
 | **Learned (data-driven)** | A neural network trained on millions of simulated grasps predicts grasps directly from a point cloud | **Contact-GraspNet** on the GPU server |
 | Sampling + evaluation | Sample many random gripper poses, score each with a model | not used |
 
@@ -171,8 +172,9 @@ flowchart TB
         CONV["convert to claw TCP<br/>+ gripper_depth, + closing drop"]
         FILT["filter: tilt <= 30 deg, width <= 65 mm,<br/>not deeper than 25 mm below the top"]
         RING["ring (rim) grasps<br/>flat rings"]
+        SLICE["narrow-slice grasps<br/>flat / long objects"]
         TOP["top-slice grasp<br/>fallback"]
-        TABLE["raise until the fingertips of the<br/>closed claw are >= 5 mm above the table"]
+        TABLE["raise until the fingertips of the<br/>closed claw are >= 3 mm above the table plane"]
         LAND["open fingers' paths free of<br/>object points (10 mm margin)"]
         RANK["sort by score, keep 5"]
     end
@@ -183,6 +185,7 @@ flowchart TB
     end
     CGN --> CONV --> FILT --> TABLE
     RING --> TABLE
+    SLICE --> TABLE
     TOP --> TABLE
     TABLE --> LAND --> RANK --> IKC --> PLAN --> CART
 ```

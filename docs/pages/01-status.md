@@ -1,12 +1,13 @@
 # Project status
 
-*State of 2026-09-29.*
+*State at the end of 2026-09-29.*
 
 ## Where we are
 
-**The cell picks real objects:** the first was a tape roll lying flat on the table was detected by the ceiling
-camera, grasped by its rim, lifted 10 cm, held, and dropped again on command. Every part of the chain is in place
-and has run on the real hardware:
+**The cell picks real objects end to end on the real hardware.** You name an object; the ceiling camera finds it, the
+cell computes a grasp for the claw, MoveIt plans the motion, the Lite6 executes it, the claw closes and the arm lifts
+the object; `release` opens the claw again. Picked so far: a **tape roll** lying flat (gripped across its rim) and a
+pair of **pliers** only ~7 mm high (gripped across the jaws). Every link of the chain has run on the real arm:
 
 ```mermaid
 flowchart LR
@@ -30,24 +31,37 @@ flowchart LR
 | Obstacle avoidance (octomap) | Built and tested in sim, **off by default** in the cell (it also sees the object to pick). |
 | Detection / segmentation / grasps (GPU server) | Working, ~3.7 s per request (Contact-GraspNet ~2.5 s of it). |
 | Grasp logic for the claw | Working: CGN grasps + ring (rim) grasps + narrow-slice grasps for flat/long objects + top-slice fallback, finger-landing check, closing-claw geometry, heights above the measured table plane. Picked: tape roll (rim), pliers (7 mm high, across the jaws). |
-| Pick executor | Working on the real arm: pre-grasp → straight approach → close → attach → lift; release. |
+| Pick executor | Working on the real arm: servo-mode check → pre-grasp → straight approach → close until the fingers stop → attach → lift; release. Puts the arm back into servo mode itself before every pick (arm errors are left to a person). |
+| Table model | Measured plane (tilted 0.87° against the robot base, 1.7 mm RMS) used for object heights, fingertip clearance (3 mm) and MoveIt's collision table. |
+| Process management | `cell start sim\|real` / `cell stop`: one process group, clean starts and stops. |
+| Documentation | This site, `http://192.168.1.171:8080`, with live status. |
 | Claw hardware + firmware | Mounted on the arm (20 mm plate, −45°), calibrated, micro-ROS over **qBArm's own access point** `qbarm-claw` (0 % loss, ~4 ms), OTA updates, servo heat guard. |
 | Grip | Closes to 1.2 rad (past pads-touching) and waits until the fingers stop; the servo pushes with the remaining error, limited by the firmware's stall guard. **No reliable "object held" signal yet**: servo position reads ~1.01 rad both empty and on a tape wall → INA219 current sensor ordered. |
 | Place (set an object down) | **Not implemented**: `release` just opens the claw where it is. |
 
 ## What is open
 
-1. **Grip sensing (INA219, ordered).** Wire the INA219 into the servo's 7.2 V line (firmware ready: `/claw/current`),
-   measure idle / moving / closed empty / on the tape, then: "gripping" from current, force control by current,
-   and turn the empty-grasp check back on. Also check the claw's drive train for slip (servo reads ~0.2 rad more
-   than the fingers move). Rubber pads on the fingers would add friction.
-2. **Place.** Move above a target, lower until contact/height, open, retract.
-3. **A named "ready" pose** in MoveIt for the real arm (the all-zero "home" pose is unsafe with the claw, see below).
-4. **Servo alternative**, if current sensing isn't enough: Feetech STS3215 (same bus type; torque limit and current
-   read-out in the servo), needs a new servo library and mount.
-5. **Reach.** Top-down grasps only work up to ~33 cm from the base (the claw + plate add 111.5 mm to the flange).
-6. **Octomap in picking**: filter the target object out of the obstacle cloud so obstacle avoidance can stay on.
-7. Housekeeping: remove the temporary passwordless sudo on qBArm; reserve qBArm's address (.171) in the router.
+In rough order of priority:
+
+1. **Grip sensing — INA219 (ordered).** Wiring plan and firmware are ready (`/claw/current`, I²C GPIO6/7). Once it's
+   in: measure the current idle, moving, closed empty and on an object; then "gripping" from current, force control
+   by current, and turn the empty-grasp check (`check_grip`) back on. Servo position can't do it: it reads ~1.01 rad
+   both empty and on a tape wall.
+2. **Claw drive train.** Check for slip between servo horn and gear (the servo turns ~0.2 rad more than the fingers
+   move). Rubber pads on the fingers would add friction on smooth objects.
+3. **Place.** Set an object down instead of dropping it: move above a target, lower until the object touches, open,
+   retract.
+4. **A named "ready" pose** for the real arm in MoveIt (the all-zero "home" pose puts the claw into the robot base).
+5. **Better grasp points on long objects.** The pliers hung by their jaws; rank narrow-slice grasps by the centre of
+   mass (the joint) instead of the middle of the outline.
+6. **Detection confidence of small objects.** "pliers" scores 0.32–0.38 against the 0.30 threshold and is sometimes
+   missed; more specific prompts or a lower threshold per request.
+7. **Reach.** Top-down grasps work up to ~33 cm from the base (claw + plate add 111.5 mm to the flange); tilted
+   approaches would extend it.
+8. **Octomap during picks.** Filter the target object out of the obstacle cloud so obstacle avoidance can stay on.
+9. **Servo alternative**, if current sensing isn't enough: Feetech STS3215 (same bus; torque limit and current in the
+   servo), needs a new servo library and mount.
+10. Housekeeping: remove the temporary passwordless sudo on qBArm; reserve qBArm's address (.171) in the router.
 
 ## Timeline
 
@@ -64,6 +78,7 @@ flowchart LR
 | 2026-09-29 | Documentation + docs server (this site). |
 | 2026-09-29 | Grip rework (close past closed, stop detection, heat guard); claw moved to qBArm's own access point `qbarm-claw`; INA219 support in the firmware. |
 | 2026-09-29 | Table measured as a plane (tilted 0.87°); narrow-slice grasps; parameter-file fix; **first flat object picked (pliers)**. |
+| 2026-09-29 | Automatic servo mode before every pick (UFACTORY's service driver in the cell). |
 | 2026-09-29 | First real picks: two crashes (see below), both fixed; `cell` script; **first successful real pick**. |
 
 ## Lessons learned (incidents and their fixes)
