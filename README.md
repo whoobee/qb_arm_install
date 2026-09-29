@@ -4,8 +4,8 @@ One script that sets up the complete qb_arm environment on a fresh **Ubuntu 24.0
 ROS 2 Jazzy, MoveIt 2, the UFactory Lite6 driver, the ceiling Azure Kinect DK and the qb_arm bringup.
 
 ```bash
-git clone git@github.com:whoobee/qb_arm_install.git
-cd qb_arm_install
+git clone git@github.com:whoobee/qb_arm_install.git ~/prj/qb_arm_install   # permanent: it also serves the docs
+cd ~/prj/qb_arm_install
 ./install.sh
 ```
 
@@ -26,6 +26,7 @@ already there. Takes roughly 15–30 minutes, mostly downloads and the workspace
 | Real-time | `realtime` group + `/etc/security/limits.d/99-realtime.conf` for ros2_control |
 | ESP32 | `dialout` group, pip/venv/pipx, `esptool` (pipx), PlatformIO Core (`pio`) + its udev rules, [qb_arm_gripper](https://github.com/whoobee/qb_arm_gripper) cloned to `~/prj/qb_arm_gripper` |
 | micro-ROS agent | micro-ROS-Agent + micro_ros_msgs (jazzy) built in the workspace, systemd `ros2-microros-agent.service` on UDP 8888 for the claw's ESP32 |
+| Documentation | systemd `qb-arm-docs.service`: serves [docs/](docs/) on http://&lt;this machine&gt;:8080 |
 
 Repositories (branch `develop`):
 
@@ -51,6 +52,7 @@ Repositories (branch `develop`):
 --no-realtime         don't grant real-time scheduling to this user
 --no-esp              skip the ESP32 tools (dialout, esptool, PlatformIO) and the qb_arm_gripper clone
 --no-microros-agent   skip the micro-ROS agent (build + ros2-microros-agent.service) for the gripper
+--no-docs             don't install the documentation server (qb-arm-docs.service, port 8080)
 ```
 
 The repos are private, so cloning over SSH needs a key on your GitHub account
@@ -58,19 +60,32 @@ The repos are private, so cloning over SSH needs a key on your GitHub account
 
 The Azure Kinect SDK asks you to accept Microsoft's EULA during install (or pass `--accept-k4a-eula`).
 
+## Documentation
+
+[docs/pages](docs/pages) holds the full documentation of the cell (architecture, design of every module, how
+detection, localisation and grasping work, MoveIt and grasping primers, runbook), in Markdown with Mermaid UML
+diagrams. `docs/server/qb_docs_server.py` (Python standard library only) serves it as a web app with a live status
+page on **http://&lt;this machine&gt;:8080**; the Markdown and diagram libraries are vendored in `docs/server/static`,
+so it works without internet access.
+
+```bash
+python3 docs/server/qb_docs_server.py --port 8080     # by hand; install.sh sets it up as qb-arm-docs.service
+```
+
 ## After installing
 
 Log out and back in once (for the `realtime` and `dialout` groups), plug in the Kinect, then in a new terminal:
 
 ```bash
-qbarm                 # real Lite6 (192.168.1.23) + MoveIt + RViz + Kinect
-qbarm sim:=true       # simulated arm + Kinect
-qbarm camera:=false   # arm only
+cell start real       # the whole cell: real Lite6 + claw + MoveIt + RViz + Kinect + qb_arm_vision
+cell start sim        # same with a simulated arm and claw
+cell stop             # always stop through cell: it takes every node with it
+qbarm camera:=false   # partial launch: arm only
 kinect                # Kinect only
 cb                    # rebuild the workspace and re-source it
 ```
 
-`qbarm` / `kinect` are aliases for `ros2 launch qb_arm bringup.launch.py` / `kinect.launch.py`;
+`cell` runs `ros2 launch qb_arm real|sim.launch.py` as one process group. `qbarm` / `kinect` are aliases for `ros2 launch qb_arm bringup.launch.py` / `kinect.launch.py`;
 see the [qb_arm README](https://github.com/whoobee/qb_arm) for launch arguments and camera calibration.
 
 Quick checks:

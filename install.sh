@@ -18,6 +18,7 @@ DO_DISCOVERY=1
 DO_REALTIME=1
 DO_ESP=1
 DO_MICROROS=1
+DO_DOCS=1
 GRIPPER_DIR="$HOME/prj/qb_arm_gripper"
 ACCEPT_K4A_EULA=0
 
@@ -43,6 +44,7 @@ Usage: ./install.sh [options]
   --no-realtime         don't grant real-time scheduling to this user
   --no-esp              skip the ESP32 tools (dialout, esptool, PlatformIO) and the qb_arm_gripper clone
   --no-microros-agent   skip the micro-ROS agent (build + ros2-microros-agent.service) for the gripper
+  --no-docs             don't install the documentation server (qb-arm-docs.service, port 8080)
   -h, --help            show this help
 EOF
 }
@@ -61,6 +63,7 @@ while [ $# -gt 0 ]; do
         --no-realtime) DO_REALTIME=0 ;;
         --no-esp) DO_ESP=0 ;;
         --no-microros-agent) DO_MICROROS=0 ;;
+        --no-docs) DO_DOCS=0 ;;
         -h|--help) usage; exit 0 ;;
         *) echo "Unknown option: $1"; usage; exit 1 ;;
     esac
@@ -296,6 +299,18 @@ if [ $DO_ESP -eq 1 ]; then
 fi
 
 # ---------------------------------------------------------------------------
+if [ $DO_DOCS -eq 1 ]; then
+    # Served from this checkout of qb_arm_install: run install.sh from a permanent clone (e.g. ~/prj/qb_arm_install)
+    step "Documentation server (systemd: qb-arm-docs.service, http://<this machine>:8080)"
+    sed "s#@USER@#$USER#; s#@DOCS@#$HERE/docs#g" "$HERE/config/qb-arm-docs.service.in" \
+        | sudo tee /etc/systemd/system/qb-arm-docs.service >/dev/null
+    sudo systemctl daemon-reload
+    sudo systemctl enable qb-arm-docs.service
+    sudo systemctl restart qb-arm-docs.service
+    info "status: $(systemctl is-active qb-arm-docs.service), pages from $HERE/docs/pages"
+fi
+
+# ---------------------------------------------------------------------------
 cat <<EOF
 
 ==========================================
@@ -312,6 +327,8 @@ Open a new terminal (or: source $WS/ros_env.sh), then:
 
 Other machines on the network join with:
   export ROS_DISCOVERY_SERVER=<this machine's IP>:11811 ROS_SUPER_CLIENT=TRUE
+
+Documentation: http://<this machine's IP>:8080
 
 Log out and back in once so the 'realtime' and 'dialout' groups apply.
 EOF

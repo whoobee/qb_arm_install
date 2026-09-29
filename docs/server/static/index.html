@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>qBArm Docs</title>
+<style>
+  :root {
+    --bg: #fbfbfa; --panel: #f2f2ef; --text: #1d1f22; --muted: #62666d; --line: #dcdcd6;
+    --accent: #2f6f9f; --accent-soft: #e3eef6; --code: #f0f0ec; --ok: #2e7d4f; --bad: #b3261e; --warn: #9a6b00;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #16181b; --panel: #1d2024; --text: #e4e6e9; --muted: #9aa0a8; --line: #2e3238;
+      --accent: #7fb3dc; --accent-soft: #1f2d38; --code: #22262b; --ok: #6cc28f; --bad: #f08a80; --warn: #e0b45a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #16181b; --panel: #1d2024; --text: #e4e6e9; --muted: #9aa0a8; --line: #2e3238;
+    --accent: #7fb3dc; --accent-soft: #1f2d38; --code: #22262b; --ok: #6cc28f; --bad: #f08a80; --warn: #e0b45a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  a { color: var(--accent); }
+  header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 17px; margin: 0; font-weight: 650; letter-spacing: .2px; }
+  header .spacer { flex: 1; }
+  header button, header input { font: inherit; font-size: 14px; color: var(--text); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; }
+  header input { width: 220px; max-width: 40vw; }
+  #menu { display: none; }
+  .layout { display: grid; grid-template-columns: 260px minmax(0, 1fr) 220px; min-height: calc(100vh - 50px); }
+  nav { border-right: 1px solid var(--line); padding: 14px 10px; background: var(--panel);
+    position: sticky; top: 50px; height: calc(100vh - 50px); overflow-y: auto; }
+  nav a { display: block; padding: 5px 10px; border-radius: 6px; color: var(--text); text-decoration: none;
+    font-size: 14.5px; line-height: 1.35; margin: 1px 0; }
+  nav a:hover { background: var(--accent-soft); }
+  nav a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  nav .sep { height: 1px; background: var(--line); margin: 10px 6px; }
+  nav .hits { font-size: 12.5px; color: var(--muted); padding: 0 10px 0 22px; }
+  main { padding: 28px 44px 80px; max-width: 980px; width: 100%; }
+  aside { position: sticky; top: 50px; height: calc(100vh - 50px); overflow-y: auto; padding: 24px 14px;
+    font-size: 13.5px; border-left: 1px solid var(--line); }
+  aside .title { color: var(--muted); text-transform: uppercase; letter-spacing: .6px; font-size: 11.5px; margin-bottom: 6px; }
+  aside a { display: block; color: var(--muted); text-decoration: none; padding: 2px 0; line-height: 1.35; }
+  aside a.h3 { padding-left: 12px; font-size: 12.5px; }
+  aside a:hover { color: var(--accent); }
+  main h1 { font-size: 30px; line-height: 1.2; margin: 0 0 18px; }
+  main h2 { font-size: 23px; margin: 38px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  main h3 { font-size: 18.5px; margin: 28px 0 8px; }
+  main h4 { font-size: 16px; margin: 22px 0 6px; }
+  main p, main li { max-width: 78ch; }
+  code { font: 13.5px/1.5 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; background: var(--code);
+    padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--code); padding: 12px 14px; border-radius: 8px; overflow-x: auto; border: 1px solid var(--line); }
+  pre code { padding: 0; background: none; }
+  table { border-collapse: collapse; margin: 14px 0; font-size: 14.5px; display: block; overflow-x: auto; }
+  th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--panel); }
+  blockquote { margin: 14px 0; padding: 8px 16px; border-left: 4px solid var(--accent); background: var(--accent-soft);
+    border-radius: 0 8px 8px 0; }
+  blockquote p { margin: 6px 0; }
+  .mermaid-wrap { margin: 16px 0; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel);
+    overflow-x: auto; cursor: zoom-in; }
+  .mermaid-wrap svg { max-width: 100%; height: auto; }
+  .mermaid-wrap.big { position: fixed; inset: 20px; z-index: 20; cursor: zoom-out; overflow: auto; background: var(--bg);
+    box-shadow: 0 10px 40px rgba(0,0,0,.35); }
+  .mermaid-wrap.big svg { max-width: none; min-width: 100%; }
+  .diagram-error { color: var(--bad); white-space: pre-wrap; font-size: 13px; }
+  .status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--panel); }
+  .card h3 { margin: 0 0 8px; font-size: 15px; }
+  .row { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; padding: 2px 0; }
+  .ok { color: var(--ok); font-weight: 600; } .bad { color: var(--bad); font-weight: 600; } .warn { color: var(--warn); font-weight: 600; }
+  .muted { color: var(--muted); }
+  @media (max-width: 1100px) { .layout { grid-template-columns: 240px minmax(0, 1fr); } aside { display: none; } }
+  @media (max-width: 760px) {
+    .layout { grid-template-columns: minmax(0, 1fr); }
+    #menu { display: inline-block; }
+    nav { display: none; position: fixed; top: 50px; left: 0; width: 80vw; z-index: 10; box-shadow: 0 8px 30px rgba(0,0,0,.3); }
+    nav.open { display: block; }
+    main { padding: 18px 16px 60px; }
+    header input { width: 120px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <button id="menu" aria-label="Pages">☰</button>
+  <h1>qBArm · Documentation</h1>
+  <span class="spacer"></span>
+  <input id="search" type="search" placeholder="Search all pages…" autocomplete="off">
+  <button id="theme" title="Switch light / dark">Dark</button>
+</header>
+<div class="layout">
+  <nav id="nav"></nav>
+  <main id="content"><p class="muted">Loading…</p></main>
+  <aside id="toc"></aside>
+</div>
+<script src="/static/marked.min.js"></script>
+<script src="/static/mermaid.min.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+let pages = [], sources = {}, current = null;
+
+// ---- theme ----
+function isDark() {
+  const t = document.documentElement.dataset.theme;
+  return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+}
+function setTheme(t) {
+  if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+  try { t ? localStorage.setItem('qbdocs-theme', t) : localStorage.removeItem('qbdocs-theme'); } catch (e) {}
+}
+try { const t = localStorage.getItem('qbdocs-theme'); if (t) setTheme(t); } catch (e) {}
+function themeLabel() { $('#theme').textContent = isDark() ? 'Light' : 'Dark'; }
+$('#theme').onclick = () => { setTheme(isDark() ? 'light' : 'dark'); themeLabel(); render(); };
+themeLabel();
+$('#menu').onclick = () => $('#nav').classList.toggle('open');
+
+// ---- markdown ----
+const slug = (s) => s.toLowerCase().replace(/<[^>]+>/g, '').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-');
+const renderer = new marked.Renderer();
+renderer.code = function ({ text, lang }) {
+  if (lang === 'mermaid') return `<div class="mermaid-wrap"><pre class="mermaid">${escapeHtml(text)}</pre></div>`;
+  return `<pre><code class="language-${escapeHtml(lang || '')}">${escapeHtml(text)}</code></pre>`;
+};
+renderer.heading = function ({ tokens, depth }) {
+  const html = this.parser.parseInline(tokens);
+  return `<h${depth} id="${slug(html)}">${html}</h${depth}>`;
+};
+renderer.link = function ({ href, title, tokens }) {
+  const text = this.parser.parseInline(tokens);
+  let h = href || '';
+  const m = h.match(/^([\w\-]+)\.md(#.*)?$/);            // link to another page
+  if (m) h = `#/${m[1]}${m[2] ? '/' + m[2].slice(1) : ''}`;
+  else if (h.startsWith('#')) h = `#/${current}/${h.slice(1)}`;   // anchor on this page
+  const ext = /^https?:/.test(h) ? ' target="_blank" rel="noopener"' : '';
+  return `<a href="${h}"${title ? ` title="${escapeHtml(title)}"` : ''}${ext}>${text}</a>`;
+};
+marked.use({ renderer, gfm: true });
+function escapeHtml(s) { return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+// ---- navigation ----
+function route() {
+  const parts = decodeURIComponent(location.hash.replace(/^#\/?/, '')).split('/');
+  return { page: parts[0] || (pages[0] && pages[0].name), anchor: parts[1] || '' };
+}
+function buildNav(filter) {
+  const q = (filter || '').trim().toLowerCase();
+  let html = `<a href="#/status" data-name="status">● Live status</a><div class="sep"></div>`;
+  for (const p of pages) {
+    let hits = '';
+    if (q) {
+      const src = (sources[p.name] || '').toLowerCase();
+      const n = src.split(q).length - 1;
+      if (!n && !p.title.toLowerCase().includes(q)) continue;
+      hits = n ? `<div class="hits">${n} match${n > 1 ? 'es' : ''}</div>` : '';
+    }
+    html += `<a href="#/${p.name}" data-name="${p.name}">${escapeHtml(p.title)}</a>${hits}`;
+  }
+  $('#nav').innerHTML = html;
+  markActive();
+}
+function markActive() {
+  for (const a of document.querySelectorAll('nav a')) a.classList.toggle('active', a.dataset.name === current);
+}
+$('#search').addEventListener('input', async (e) => {
+  if (e.target.value && Object.keys(sources).length < pages.length) await loadAll();
+  buildNav(e.target.value);
+});
+async function loadAll() {
+  await Promise.all(pages.map(async (p) => { if (!sources[p.name]) sources[p.name] = await (await fetch(`/pages/${p.name}.md`)).text(); }));
+}
+
+// ---- rendering ----
+let statusTimer = null;
+async function render() {
+  const { page, anchor } = route();
+  current = page;
+  markActive();
+  $('#nav').classList.remove('open');
+  clearInterval(statusTimer);
+  if (page === 'status') { await renderStatus(); statusTimer = setInterval(renderStatus, 5000); $('#toc').innerHTML = ''; return; }
+  if (!sources[page]) {
+    const r = await fetch(`/pages/${page}.md`);
+    sources[page] = r.ok ? await r.text() : `# Not found\n\nNo page \`${page}\`.`;
+  }
+  const main = $('#content');
+  main.innerHTML = marked.parse(sources[page]);
+  const title = (pages.find((p) => p.name === page) || {}).title;
+  document.title = title ? `${title} · qBArm Docs` : 'qBArm Docs';
+  buildToc();
+  mermaid.initialize({ startOnLoad: false, theme: isDark() ? 'dark' : 'default', securityLevel: 'strict',
+    flowchart: { htmlLabels: true, curve: 'basis' }, sequence: { mirrorActors: false }, fontFamily: 'system-ui, sans-serif' });
+  for (const el of main.querySelectorAll('pre.mermaid')) {
+    try { await mermaid.run({ nodes: [el] }); }
+    catch (err) { el.outerHTML = `<div class="diagram-error">Diagram error: ${escapeHtml(String(err.message || err))}</div>`; }
+  }
+  for (const w of main.querySelectorAll('.mermaid-wrap')) w.onclick = () => w.classList.toggle('big');
+  if (anchor) { const el = document.getElementById(anchor); if (el) el.scrollIntoView(); } else window.scrollTo(0, 0);
+}
+function buildToc() {
+  const hs = [...document.querySelectorAll('main h2, main h3')];
+  $('#toc').innerHTML = hs.length ? '<div class="title">On this page</div>' +
+    hs.map((h) => `<a class="${h.tagName.toLowerCase()}" href="#/${current}/${h.id}">${h.textContent}</a>`).join('') : '';
+}
+async function renderStatus() {
+  let s;
+  try { s = await (await fetch('/api/status')).json(); } catch (e) { $('#content').innerHTML = '<p class="bad">Status not available</p>'; return; }
+  const yes = (ok, t, f) => `<span class="${ok ? 'ok' : 'bad'}">${ok ? (t || 'yes') : (f || 'no')}</span>`;
+  const svc = Object.entries(s.services).map(([k, v]) => `<div class="row"><span>${k}</span>${yes(v === 'active', v, v)}</div>`).join('');
+  const hosts = Object.entries(s.hosts).map(([k, v]) => `<div class="row"><span>${k}</span>${yes(v, 'reachable', 'no answer')}</div>`).join('');
+  const c = s.cell;
+  const cell = c.running
+    ? `<div class="row"><span>state</span><span class="ok">running (${c.mode})</span></div><div class="row"><span>process group</span><span>${c.pgid}</span></div><div class="row"><span>processes</span><span>${c.processes}</span></div>`
+    : `<div class="row"><span>state</span><span class="warn">stopped</span></div><div class="muted" style="font-size:13px">start with <code>cell start sim|real</code></div>`;
+  const g = s.gpu_server;
+  const gpu = g.ok
+    ? `<div class="row"><span>health</span><span class="ok">ok</span></div><div class="row"><span>GPU</span><span>${escapeHtml(g.gpu || '')}</span></div><div class="row"><span>memory</span><span>${g.gpu_mem_allocated_gib} GiB</span></div><div class="row"><span>detector</span><span class="muted">${escapeHtml((g.detector || '').split('/').pop())}</span></div>`
+    : `<div class="row"><span>health</span><span class="bad">not reachable</span></div><div class="muted" style="font-size:13px">${escapeHtml(g.error || '')}</div>`;
+  $('#content').innerHTML = `<h1>Live status</h1><p class="muted">qBArm, ${s.time} · refreshes every 5 s</p>
+    <div class="status-grid">
+      <div class="card"><h3>Cell (cell script)</h3>${cell}</div>
+      <div class="card"><h3>System services</h3>${svc}</div>
+      <div class="card"><h3>Hardware on the network</h3>${hosts}</div>
+      <div class="card"><h3>Vision GPU server (hbh-ai)</h3>${gpu}</div>
+    </div>`;
+}
+
+(async function init() {
+  pages = await (await fetch('/api/pages')).json();
+  buildNav();
+  window.addEventListener('hashchange', render);
+  render();
+})();
+</script>
+</body>
+</html>
