@@ -36,17 +36,19 @@ flowchart LR
         MRA["micro-ROS agent<br/>UDP 8888 (systemd)"]
         CELL["the cell (cell start real)<br/>drivers, MoveIt, RViz, perception, pick"]
         DOC["docs server<br/>TCP 8080 (systemd)"]
+        AP["qbarm-claw access point<br/>USB Wi-Fi (Archer T4U), 10.42.0.1"]
     end
     subgraph gpu["hbh-ai - Pop!_OS, RTX 3060 - 192.168.1.220"]
         SRV["qb_arm_vision container<br/>FastAPI, TCP 8770"]
     end
     ARM["Lite6 controller<br/>192.168.1.23"]
-    ESP["Claw ESP32-C3<br/>qbag-fad7bc, 192.168.1.123"]
+    ESP["Claw ESP32-C3<br/>qbag-fad7bc, 10.42.0.10"]
     KIN["Azure Kinect"]
     CELL -- "xArm SDK (TCP)" --> ARM
     CELL -- "USB 3" --> KIN
     CELL -- "HTTP POST /pipeline<br/>RGB-D snapshot" --> SRV
-    ESP -- "micro-ROS / XRCE-DDS over UDP" --> MRA
+    ESP -- "Wi-Fi 2.4 GHz, channel 1" --> AP
+    AP -- "micro-ROS / XRCE-DDS over UDP" --> MRA
     CELL -. "DDS via discovery server" .- DS
     MRA -. "DDS" .- DS
 ```
@@ -56,8 +58,9 @@ flowchart LR
 | qBArm | `192.168.1.171` (DHCP, not reserved yet) | Everything ROS: drivers, MoveIt, RViz, perception client, pick logic, micro-ROS agent, discovery server, docs |
 | Lite6 controller | `192.168.1.23` | Arm controller; qBArm talks to it with the UFACTORY SDK inside the ros2_control hardware plugin |
 | hbh-ai | `192.168.1.220` (`hbh-ai.local`) | GPU inference server (shared with other services: ollama, immich, speech-to-speech on the second GPU) |
-| Claw ESP32-C3 | `192.168.1.123` (`qbag-fad7bc.local`) | Claw controller; 2.4 GHz Wi-Fi; micro-ROS client; OTA on port 3232 |
-| Spare ESP32-C3 | `192.168.1.229` (`qbag-392f64.local`) | Same firmware, not wired; only one board may run at a time |
+| Claw ESP32-C3 | `10.42.0.10` on `qbarm-claw` (fixed by MAC) | Claw controller; micro-ROS client; OTA on port 3232 |
+| Spare ESP32-C3 | `10.42.0.11` on `qbarm-claw` | Same firmware, not wired; only one board may run at a time |
+| `qbarm-claw` | `10.42.0.1/24`, 2.4 GHz channel 1 | qBArm's own access point for the claw, on a second (USB) Wi-Fi adapter next to the arm; NetworkManager, WPA2, DHCP with fixed addresses per board |
 
 **ROS discovery.** ROS 2 nodes normally find each other with multicast. qBArm instead runs a *Fast DDS discovery
 server* ("ROS master"-like) on UDP 11811; every node points to it with `ROS_DISCOVERY_SERVER`

@@ -31,23 +31,23 @@ flowchart LR
 | Detection / segmentation / grasps (GPU server) | Working, ~3.7 s per request (Contact-GraspNet ~2.5 s of it). |
 | Grasp logic for the claw | Working: CGN grasps + ring (rim) grasps + top-slice fallback, finger-landing check, closing-claw geometry. |
 | Pick executor | Working on the real arm: pre-grasp → straight approach → close → attach → lift; release. |
-| Claw hardware + firmware | Mounted on the arm (20 mm plate, −45°), calibrated, micro-ROS over Wi-Fi, OTA updates. |
-| Grip force | **Weak**: holds a tape roll, but it slid out before the overshoot fix and is "not that strong" now. |
+| Claw hardware + firmware | Mounted on the arm (20 mm plate, −45°), calibrated, micro-ROS over **qBArm's own access point** `qbarm-claw` (0 % loss, ~4 ms), OTA updates, servo heat guard. |
+| Grip | Closes to 1.2 rad (past pads-touching) and waits until the fingers stop; the servo pushes with the remaining error, limited by the firmware's stall guard. **No reliable "object held" signal yet**: servo position reads ~1.01 rad both empty and on a tape wall → INA219 current sensor ordered. |
 | Place (set an object down) | **Not implemented**: `release` just opens the claw where it is. |
 
 ## What is open
 
-1. **Stronger grip.** Commands are clamped at 0.96 rad (pads touching), so a thin object leaves little position
-   error for the servo to push with. Planned: allow commands past 0.96 (up to ~1.2 rad, still inside the servo's
-   stored limit 650), raise `grip_overshoot` to 0.3 rad, and let `pick_executor` continue when the claw stops
-   moving instead of waiting 5 s for a position it cannot reach. Rubber pads on the fingers would add friction.
+1. **Grip sensing (INA219, ordered).** Wire the INA219 into the servo's 7.2 V line (firmware ready: `/claw/current`),
+   measure idle / moving / closed empty / on the tape, then: "gripping" from current, force control by current,
+   and turn the empty-grasp check back on. Also check the claw's drive train for slip (servo reads ~0.2 rad more
+   than the fingers move). Rubber pads on the fingers would add friction.
 2. **Place.** Move above a target, lower until contact/height, open, retract.
 3. **A named "ready" pose** in MoveIt for the real arm (the all-zero "home" pose is unsafe with the claw, see below).
-4. **Grip detection** ("adaptive"): the servo stops short of its target when it holds something; publish that as
-   `/claw/gripping` and let the pick check it before lifting.
+4. **Servo alternative**, if current sensing isn't enough: Feetech STS3215 (same bus type; torque limit and current
+   read-out in the servo), needs a new servo library and mount.
 5. **Reach.** Top-down grasps only work up to ~33 cm from the base (the claw + plate add 111.5 mm to the flange).
 6. **Octomap in picking**: filter the target object out of the obstacle cloud so obstacle avoidance can stay on.
-7. Housekeeping: remove the temporary passwordless sudo on qBArm; reserve the DHCP addresses (qBArm .171, claw .123).
+7. Housekeeping: remove the temporary passwordless sudo on qBArm; reserve qBArm's address (.171) in the router.
 
 ## Timeline
 
@@ -61,6 +61,8 @@ flowchart LR
 | 2026-09-28 | Vision: GPU server (Grounding DINO + SAM 2 + Contact-GraspNet) and `qb_arm_vision` (detect + pick services); picks work in sim. |
 | 2026-09-29 | ESP32-C3 claw firmware: HX-06L over the BusLinker, micro-ROS over Wi-Fi, OTA, calibration; micro-ROS agent as a service. |
 | 2026-09-29 | Claw mounted on the arm: 20 mm plate, −45° about the flange axis. |
+| 2026-09-29 | Documentation + docs server (this site). |
+| 2026-09-29 | Grip rework (close past closed, stop detection, heat guard); claw moved to qBArm's own access point `qbarm-claw`; INA219 support in the firmware. |
 | 2026-09-29 | First real picks: two crashes (see below), both fixed; `cell` script; **first successful real pick**. |
 
 ## Lessons learned (incidents and their fixes)
@@ -75,7 +77,11 @@ These are worth reading: each one changed the design.
 | 4 | **Crash 1**: a finger landed on top of the tape roll (arm stopped with C31 "collision caused abnormal joint current") | Contact-GraspNet grasp on a thin rim, tilted 30°, fingers closing *along* the rim; by the model one finger passed the tape at 3.7 mm — less than the real errors | Rim grasps for flat rings (straight down, closing radially); every grasp must keep objects out of the open fingers' paths with a 10 mm margin |
 | 5 | **Crash 2**: fingers pressed into the table while closing; emergency stop | The claw is a parallelogram: closing moves the fingers **18.8 mm further down**. Only the open claw was checked against the table. | `claw.py` finger-drop model; grasp height raised by the drop; table check with the fully closed claw |
 | 6 | Stale ROS processes from earlier launches: two pick executors executed one pick; the Kinect stayed busy | Ad-hoc `ros2 launch` + `pkill`; pkill patterns even matched the calling shell | `cell` script: one process group per cell, stopped as a whole |
-| 7 | The tape roll slid out of the fingers | The servo is position-controlled; closing only 5 mm narrower than the object left ~3 servo steps of error, i.e. almost no force | Close `grip_overshoot` (0.2 rad) past the contact angle |
+| 7 | The tape roll slid out of the fingers | The servo is position-controlled; closing only 5 mm narrower than the object left ~3 servo steps of error, i.e. almost no force | Close past the contact angle (first +0.2 rad, now always to 1.2 rad) |
+| 8 | The claw closed only ~0.2 rad and the pads never touched the tape | A fallback in the pick replaced grasp widths under 15 mm with the object's size: a 13.8 mm tape wall became 81 mm | Closing no longer uses the estimated width at all: close to 1.2 rad and wait until the fingers stop |
+| 9 | "Nothing grasped" although the tape was between the fingers; servo at 66 °C | The servo reads ~1.01 rad both empty and on the tape (give in the drive train), so position can't show contact; pushing at full error heats the servo | Empty check off by default; firmware stall guard (hold with 30 steps after 0.3 s, derate from 60 °C, limp from 70 °C); INA219 ordered |
+| 10 | Claw link lost up to 75 % of the packets; OTA impossible | ESP32 on the arm among metal, far from the building access points | Second Wi-Fi adapter on qBArm (TP-Link Archer T4U v3) running the access point `qbarm-claw` next to the arm: 0 % loss, ~4 ms, RSSI −42 dBm |
+| 11 | NetworkManager crashed (assertion) on a `systemctl reload`; the access point's dnsmasq was left orphaned | NetworkManager bug on reload | Don't reload NetworkManager; if it happens: kill the orphaned dnsmasq, `nmcli con up qbarm-claw` |
 
 > **Safety rule born from this:** with the claw mounted, the arm's **all-zero joint pose** (xArm "home",
 > UFACTORY app "go home") puts the claw **into the robot base**. Never send the real arm there.

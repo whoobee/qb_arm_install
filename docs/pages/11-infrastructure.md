@@ -20,11 +20,12 @@ flowchart TB
     I --> J["ros2-microros-agent.service"]
     J --> K["realtime group + limits"]
     K --> L["ESP32 tools: dialout, pipx esptool,<br/>PlatformIO + udev rules,<br/>clone qb_arm_gripper"]
-    L --> M["docs: qb-arm-docs.service"]
+    L --> AP["claw access point qbarm-claw<br/>(USB Wi-Fi adapter with AP mode)"]
+    AP --> M["docs: qb-arm-docs.service"]
 ```
 
 Options: `--ws DIR`, `--https`, `--branch`, `--accept-k4a-eula`, `--no-upgrade`, `--no-kinect`, `--no-build`,
-`--no-bashrc`, `--no-discovery-server`, `--no-realtime`, `--no-esp`, `--no-microros-agent`, `--no-docs`.
+`--no-bashrc`, `--no-discovery-server`, `--no-realtime`, `--no-esp`, `--no-microros-agent`, `--no-claw-ap`, `--no-docs`.
 GitHub over SSH port 22 is flaky from qBArm; the scripts use `ssh://git@ssh.github.com:443/whoobee/<repo>.git`.
 
 ## System services (systemd)
@@ -36,6 +37,24 @@ GitHub over SSH port 22 is flaky from qBArm; the scripts use `ssh://git@ssh.gith
 | `qb-arm-docs` | `python3 docs/server/qb_docs_server.py --port 8080` | This documentation |
 
 All run as user `whoobee`, restart on failure.
+
+## The claw's access point `qbarm-claw`
+
+The claw's ESP32 sits on the arm among metal; through the building Wi-Fi it lost up to 75 % of its packets and
+firmware updates failed. qBArm therefore runs its own 2.4 GHz access point on a **second, USB Wi-Fi adapter**
+(TP-Link Archer T4U v3, RTL8812BU, in-kernel driver `rtw88_8822bu`, supports AP mode) placed next to the arm:
+
+| | |
+|---|---|
+| NetworkManager connection | `qbarm-claw` (autoconnect), interface `wlxec750c316d15`, mode AP, band bg, **channel 1** (the building uses 6 and 11), WPA2-PSK (CCMP) |
+| Addresses | `ipv4.method shared`: qBArm = `10.42.0.1/24`, DHCP by NetworkManager's dnsmasq; fixed addresses per board in `/etc/NetworkManager/dnsmasq-shared.d/qbarm-claw.conf` (claw `10.42.0.10`, spare `.11`) |
+| Password | generated at setup; in `~/prj/qb_arm_gripper/wifi.env` (`QBAG_WIFI_PASSWORD`, git-ignored) and the NetworkManager connection |
+| micro-ROS agent | unchanged: it listens on all interfaces, the claw talks to `10.42.0.1:8888` |
+| Result | 0 % loss, ~4 ms, RSSI about −42 dBm |
+
+The firmware only knows this network; after 30 s without Wi-Fi it restarts and joins again (the servo keeps its
+position meanwhile). **Don't `systemctl reload NetworkManager`**: it crashed on that once (assertion in
+`nm-settings-utils.c`) and left the access point's dnsmasq orphaned (fix: kill that dnsmasq, `nmcli con up qbarm-claw`).
 
 ## Environment (`~/prj/ros2_ws/ros_env.sh`)
 
@@ -76,9 +95,10 @@ Use depth mode `NFOV_UNBINNED` (`WFOV_UNBINNED` at 30 fps crashes).
 | qBArm | 192.168.1.171 (Wi-Fi, DHCP) | UDP 11811 discovery, UDP 8888 micro-ROS, TCP 8080 docs, SSH |
 | Lite6 controller | 192.168.1.23 | UFACTORY SDK |
 | hbh-ai | 192.168.1.220 | TCP 8770 vision server |
-| Claw ESP32 | 192.168.1.123 | UDP (micro-ROS client), TCP 3232 OTA |
+| Claw ESP32 | 10.42.0.10 on `qbarm-claw` | UDP (micro-ROS client), TCP 3232 OTA |
+| `qbarm-claw` | 10.42.0.1/24 (qBArm, `wlxec750c316d15`) | DHCP/DNS (NetworkManager's dnsmasq) |
 
-Name resolution for `.local` names via mDNS (avahi). Recommended: reserve qBArm's and the claw's addresses in the router.
+Name resolution for `.local` names via mDNS (avahi). Recommended: reserve qBArm's address in the router.
 
 ## Temporary state to clean up
 

@@ -39,7 +39,7 @@ flowchart TB
     PO -- no --> OPEN["open the claw"]
     OPEN --> M1["execute: move to pre-grasp<br/>(20% speed)"]
     M1 --> M2["execute: approach<br/>(5% speed)"]
-    M2 --> CL["close: contact angle + grip_overshoot"]
+    M2 --> CL["close to grip_target 1.2 rad,<br/>wait until the fingers stop"]
     CL --> AT["attach the object to link_tcp"]
     AT --> LI{"straight lift 10 cm<br/>(>= 2 cm possible)?"}
     LI -- no --> F3(["fail: grasped but cannot lift"])
@@ -87,11 +87,14 @@ for which steps 3–5 succeed is chosen; with `plan_only` the pick stops here (M
 1. **Open the claw** (`/claw/command` 0.0) and wait until `claw_joint` is within 0.02 rad (max. 5 s).
 2. **Move to the pre-grasp** (`/execute_trajectory`).
 3. **Approach** in a straight line, slowly.
-4. **Close**: target = `min(claw_angle(width) + grip_overshoot, 0.96)`. `claw_angle(width)` is where the pads touch an
-   object of that width (from the parallelogram geometry, see [claw.py](09-qb_arm_vision.md#clawpy)); the overshoot
-   (0.2 rad) makes the position-controlled servo push. The width is the grasp's predicted width, or the object's
-   short side if that is below 15 mm (unreliable). The claw never reaches the target when it holds something;
-   after 5 s the pick logs "Claw did not reach …" and continues.
+4. **Close**: command `grip_target` (1.2 rad, **past** pads-touching at 0.96) and wait until the claw stops moving
+   (position unchanged for 0.4 s) — the object stops the fingers, and the position-controlled servo keeps pushing
+   with the remaining error: that is the grip force. The firmware's stall guard then reduces the push to 30 servo
+   steps (see [claw firmware](10-qb_arm_gripper.md)). The estimated width is **not** used for closing (it once
+   was, and a fallback turned a 13.8 mm wall into 81 mm, leaving the fingers 60 mm apart); it only sets the grasp
+   height. The stop position is logged as the gripped width. With `check_grip`, a claw that closes to within
+   `empty_margin` of fully closed counts as "nothing grasped": the claw opens and the pick ends without lifting.
+   **Off by default**, because the servo reads ~1.01 rad both empty and on a tape wall; it needs the INA219.
 5. **Attach** the object to `link_tcp` (touch links = the claw links). From now on MoveIt carries it with the arm.
 6. **Lift**: straight line 10 cm up from the current TCP pose; at least 2 cm must be possible (edge of the reach).
 
@@ -122,8 +125,12 @@ with the object inside the table or the robot; release before planning elsewhere
 | `velocity_scaling` / `acceleration_scaling` | 0.2 / 0.2 | of the joint limits, free motion and lift |
 | `approach_velocity_scaling` | 0.05 | final straight approach |
 | `planning_time` | 5.0 | s per plan |
-| `grip_overshoot` | 0.2 | rad past the contact angle (grip force) |
+| `grip_target` | 1.2 | rad, claw command when gripping (past fully closed; clamped to 1.2) |
+| `check_grip`, `empty_margin` | false, 0.03 | fail the pick if the claw closes to within `empty_margin` of 0.96 (never in sim) |
 | `claw_joint`, `claw_links` | | names in the URDF |
+
+`grip_target`, `check_grip` and `empty_margin` are read at every pick: `ros2 param set /qb_arm_vision/pick_executor ...`
+tunes them without a restart.
 
 ## Example session
 

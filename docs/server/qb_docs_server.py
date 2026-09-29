@@ -30,7 +30,8 @@ TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=u
 
 # What /api/status checks (all cheap; the result is cached)
 SERVICES = ['ros2-discovery', 'ros2-microros-agent', 'qb-arm-docs']
-HOSTS = {'Lite6 controller': '192.168.1.23', 'Claw ESP32 (qbag-fad7bc)': '192.168.1.123'}
+AP_CONNECTION = 'qbarm-claw'   # NetworkManager access point for the claw
+HOSTS = {'Lite6 controller': '192.168.1.23', 'Claw ESP32 (qbarm-claw)': '10.42.0.10'}
 GPU_HEALTH = 'http://hbh-ai.local:8770/health'
 CELL_PGID = os.path.join(os.environ.get('XDG_RUNTIME_DIR', f'/run/user/{os.getuid()}'), 'qb_arm_cell', 'pgid')
 
@@ -86,6 +87,7 @@ class Status:
                 self.value = {
                     'time': time.strftime('%Y-%m-%d %H:%M:%S'),
                     'services': {s: run(['systemctl', 'is-active', s]) or 'unknown' for s in SERVICES},
+                    'access_point': AP_CONNECTION in run(['nmcli', '-t', '-f', 'NAME', 'con', 'show', '--active']).split(),
                     'cell': cell_state(),
                     'hosts': {name: ping(ip) for name, ip in HOSTS.items()},
                     'gpu_server': gpu_state(),

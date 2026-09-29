@@ -19,6 +19,7 @@ DO_REALTIME=1
 DO_ESP=1
 DO_MICROROS=1
 DO_DOCS=1
+DO_CLAW_AP=1
 GRIPPER_DIR="$HOME/prj/qb_arm_gripper"
 ACCEPT_K4A_EULA=0
 
@@ -45,6 +46,7 @@ Usage: ./install.sh [options]
   --no-esp              skip the ESP32 tools (dialout, esptool, PlatformIO) and the qb_arm_gripper clone
   --no-microros-agent   skip the micro-ROS agent (build + ros2-microros-agent.service) for the gripper
   --no-docs             don't install the documentation server (qb-arm-docs.service, port 8080)
+  --no-claw-ap          don't set up qbarm-claw, the access point for the claw (needs a USB Wi-Fi adapter)
   -h, --help            show this help
 EOF
 }
@@ -64,6 +66,7 @@ while [ $# -gt 0 ]; do
         --no-esp) DO_ESP=0 ;;
         --no-microros-agent) DO_MICROROS=0 ;;
         --no-docs) DO_DOCS=0 ;;
+        --no-claw-ap) DO_CLAW_AP=0 ;;
         -h|--help) usage; exit 0 ;;
         *) echo "Unknown option: $1"; usage; exit 1 ;;
     esac
@@ -296,6 +299,47 @@ if [ $DO_ESP -eq 1 ]; then
     fi
     [ -f "$GRIPPER_DIR/wifi.env" ] || cp "$GRIPPER_DIR/wifi.env.example" "$GRIPPER_DIR/wifi.env"
     info "gripper firmware: fill in $GRIPPER_DIR/wifi.env, then: cd $GRIPPER_DIR && pio run -e gripper -t upload"
+fi
+
+# ---------------------------------------------------------------------------
+if [ $DO_CLAW_AP -eq 1 ]; then
+    # The claw's ESP32 sits on the arm among metal: through the building Wi-Fi it lost up to 75 % of its packets.
+    # A second (USB) Wi-Fi adapter on qBArm runs a dedicated 2.4 GHz access point next to the arm instead.
+    step "Claw access point qbarm-claw (second Wi-Fi adapter, 10.42.0.1/24)"
+    apt_install iw
+    AP_IF=""
+    for dev in /sys/class/net/wlx*; do
+        [ -e "$dev" ] || continue
+        dev=$(basename "$dev")
+        phy=$(iw dev "$dev" info 2>/dev/null | awk '/wiphy/{print "phy"$2}')
+        if [ -n "$phy" ] && iw phy "$phy" info | sed -n '/Supported interface modes/,/Band/p' | grep -q '\* AP$'; then
+            AP_IF=$dev; break
+        fi
+    done
+    if [ -z "$AP_IF" ]; then
+        info "no USB Wi-Fi adapter with access point support found - plug one in (e.g. TP-Link Archer T4U v3) and re-run"
+    else
+        sudo install -m 644 "$HERE/config/qbarm-claw-dnsmasq.conf" /etc/NetworkManager/dnsmasq-shared.d/qbarm-claw.conf
+        # The password lives in the gripper's (git-ignored) wifi.env; create one if there is none yet
+        ENV_FILE="$GRIPPER_DIR/wifi.env"
+        PSK=$(grep -s '^QBAG_WIFI_PASSWORD=' "$ENV_FILE" | cut -d= -f2- || true)
+        if [ -z "$PSK" ]; then
+            PSK=$(python3 -c "import secrets,string; a=string.ascii_letters+string.digits; print(''.join(secrets.choice(a) for _ in range(20)))")
+            if [ -f "$ENV_FILE" ]; then
+                sed -i "s|^QBAG_WIFI_PASSWORD=.*|QBAG_WIFI_PASSWORD=$PSK|" "$ENV_FILE"
+                info "generated the access point password and wrote it to $ENV_FILE"
+            else
+                info "no $ENV_FILE - access point password is in the NetworkManager connection (nmcli -s con show qbarm-claw)"
+            fi
+        fi
+        nmcli -t -f NAME con show | grep -qx qbarm-claw || sudo nmcli con add type wifi con-name qbarm-claw ssid qbarm-claw >/dev/null
+        sudo nmcli con modify qbarm-claw ifname "$AP_IF" autoconnect yes ssid qbarm-claw \
+            802-11-wireless.mode ap 802-11-wireless.band bg 802-11-wireless.channel 1 \
+            wifi-sec.key-mgmt wpa-psk wifi-sec.proto rsn wifi-sec.pairwise ccmp wifi-sec.group ccmp wifi-sec.psk "$PSK" \
+            ipv4.method shared ipv4.addresses 10.42.0.1/24 ipv6.method disabled
+        sudo nmcli con up qbarm-claw >/dev/null
+        info "qbarm-claw on $AP_IF, channel 1 (pick a free one: sudo iw dev $AP_IF scan), claw at 10.42.0.10"
+    fi
 fi
 
 # ---------------------------------------------------------------------------

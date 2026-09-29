@@ -21,7 +21,10 @@
 | **Flying pixels** | Depth pixels on object edges that mix foreground and background and float in between |
 | **FK / IK** | Forward kinematics (joints → pose) / inverse kinematics (pose → joints) |
 | **Grasp** | Pose of the TCP + width at which the gripper closes on an object |
-| **Grip overshoot** | How far past the contact angle the claw is commanded, to make the position-controlled servo push |
+| **Grip target** | Claw command when gripping (1.2 rad), past pads-touching, so the position-controlled servo keeps pushing on the object |
+| **INA219** | Current/voltage sensor (I²C) in the servo supply, for a real "gripping" signal |
+| **qbarm-claw** | qBArm's own Wi-Fi access point for the claw (second USB adapter, 10.42.0.1) |
+| **Stall guard** | Firmware limit: a servo stopped short of its target keeps only 30 steps of push; heat derating |
 | **Grounding DINO** | Open-vocabulary object detector: text prompt → boxes |
 | **ICP** | Iterative Closest Point: aligns a point cloud to a model by repeatedly matching nearest points |
 | **Intrinsics (K)** | Camera focal lengths and principal point (fx, fy, cx, cy) |

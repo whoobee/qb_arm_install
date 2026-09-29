@@ -156,7 +156,9 @@ forward drop of fingers   = −CY·sin a + CZ·(cos a − 1)
 A second property: the servo is **position-controlled**. It does not "squeeze with force F"; it drives towards a
 target angle and pushes in proportion to how far it still is from it. When the pads are stopped by the object, the
 remaining **position error** sets the grip force. Commanding exactly the object's width gives almost no force; the
-pick therefore commands `grip_overshoot` (0.2 rad) *past* the angle at which the pads touch.
+pick therefore commands 1.2 rad — *past* the angle at which the pads touch each other (0.96) — and the object stops
+the fingers earlier. The servo can't report torque or current, and its position turned out to read nearly the same
+with and without an object (give in the drive train), so "is something held?" needs a current sensor (INA219).
 
 ## How it all fits together in qBArm
 

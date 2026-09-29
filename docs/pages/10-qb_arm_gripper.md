@@ -15,7 +15,8 @@ flowchart LR
     BL -- "TX -> GPIO20 RX" --> C3
     BL -- "bus: signal, V+, GND" --> SV["HX-06L servo<br/>ID 1, 115200 baud<br/>limits 400..650"]
     SV -- "gears" --> CRK["claw crank"]
-    PSU24["24 V rail"] --> B72["buck 7.2 V"] --> BL
+    PSU24["24 V rail"] --> B72["buck 7.2 V"] --> INA["INA219 (ordered)<br/>shunt in the + line"] --> BL
+    INA -. "I2C GPIO6/7" .- C3
     PSU24 --> B5["buck 5 V"] --> C3
     USB["USB (flashing/debug only)"] -. "NOT together with buck 5 V" .-> C3
 ```
@@ -27,7 +28,8 @@ flowchart LR
 | Adapter | Hiwonder BusLinker V2.5: turns the ESP's UART TX/RX into the servo's single-wire half-duplex bus |
 | Wiring | GPIO21 (TX) → BusLinker RX, GPIO20 (RX) ← BusLinker TX, GND common |
 | Servo supply | 6–8.4 V on the BusLinker (7.2 V buck from 24 V). With only USB power the servo answers (reports ~3.3 V) but cannot move |
-| Boards | gripper `40:4C:CA:FA:D7:BC` = `qbag-fad7bc` (192.168.1.123, wired); spare `EC:DA:3B:39:2F:64` = `qbag-392f64` (192.168.1.229) |
+| Boards | gripper `40:4C:CA:FA:D7:BC` = `qbag-fad7bc` (10.42.0.10, wired); spare `EC:DA:3B:39:2F:64` = `qbag-392f64` (10.42.0.11) |
+| Current sensor (ordered) | TI **INA219** module (0.1 Ω shunt, I²C 0x40) on the high side of the servo supply: buck 7.2 V + → VIN+, VIN− → BusLinker +; VCC 3V3, GND, SDA GPIO6, SCL GPIO7. ±3.2 A, 0.1 mA resolution. Optional: the firmware detects it at boot |
 
 > **Power warning.** These small boards connect the 5V pin **directly to USB VBUS**. With the buck's 5 V on the 5V pin
 > *and* USB plugged in, the buck back-feeds the PC: qBArm's USB port hit over-current and stayed disabled until a full
@@ -37,11 +39,13 @@ flowchart LR
 
 | Topic | Type | Direction | Meaning |
 |---|---|---|---|
-| `/claw/command` | `std_msgs/Float64` | in | `claw_joint` target, rad: 0 open (70 mm) … 0.96 closed; clamped to 0..0.96 and to the servo's limits; moves at 1.5 rad/s |
+| `/claw/command` | `std_msgs/Float64` | in | `claw_joint` target, rad: 0 open (70 mm) … 0.96 pads touching … **1.2** to grip (the object stops the fingers; the servo pushes with the remaining error); clamped to 0..1.2 and to the servo's limits (1.2 = servo ~641 < 650); moves at 1.5 rad/s |
 | `/claw/torque` | `std_msgs/Bool` | in | `false`: servo limp (move the claw by hand); `true`: hold where it is; any command also turns it on |
 | `/claw/joint_states` | `sensor_msgs/JointState` | out, 20 Hz | measured `claw_joint`, stamped with the agent-synchronised clock |
 | `/claw/supply_voltage` | `std_msgs/Float32` | out, 1 Hz | servo input voltage (V) |
 | `/claw/temperature` | `std_msgs/Float32` | out, 1 Hz | servo temperature (°C) |
+| `/claw/rssi` | `std_msgs/Float32` | out, 1 Hz | Wi-Fi signal strength (dBm) |
+| `/claw/current` | `std_msgs/Float32` | out, 20 Hz | servo supply current (A); only when the INA219 is fitted |
 
 All publishers and subscribers are *reliable* (joint_state_publisher subscribes reliably; a best-effort publisher would
 not match).
@@ -96,9 +100,9 @@ classDiagram
 
 ### Main loop and agent connection
 
-`setup()`: USB serial log, servo UART (Serial1, 115200), `JointState` message buffers, hostname `qbag-<last 3 MAC
-bytes>`, optional static IP, Wi-Fi scan of all channels joining the **strongest** AP, micro-ROS Wi-Fi transport
-(blocks until Wi-Fi is up), then TX power 8.5 dBm, modem sleep off, ArduinoOTA.
+`setup()`: USB serial log, servo UART (Serial1, 115200), INA219 probe (I²C), `JointState` message buffers, hostname
+`qbag-<last 3 MAC bytes>`, `joinWifi()` — join `qbarm-claw` (retrying every 15 s until it is there) — then the
+micro-ROS UDP transport to the agent at `10.42.0.1:8888`, TX power 8.5 dBm, modem sleep off, ArduinoOTA.
 
 `loop()`, never blocking:
 
@@ -113,9 +117,32 @@ stateDiagram-v2
     DISCONNECTED --> WAITING: destroyEntities()
 ```
 
-Independently of the agent state, every pass: `ArduinoOTA.handle()`; every 50 ms read the servo position; until the
-servo has answered once, read its angle limits every 1 s (the servo may be powered after the ESP). The servo keeps
-its last target without the agent.
+Independently of the agent state, every pass: `ArduinoOTA.handle()`; Wi-Fi watchdog (no Wi-Fi for 30 s → restart
+and join again); every 50 ms read the servo position and the current, then `protectServo()`; every 1 s read
+temperature and voltage; until the servo has answered once, read its angle limits every 1 s (the servo may be
+powered after the ESP). The servo keeps its last target without the agent.
+
+### Grip and heat protection (`protectServo`)
+
+Gripping commands a target past pads-touching, so with an object the servo stays short of its target and pushes
+with the remaining position error. Left alone that heats the servo (closing an empty claw to 1.2 rad drove it to
+66 °C). Every 50 ms:
+
+```mermaid
+flowchart TB
+    A{"temperature >= 70 C?"} -- yes --> LIMP["torque off (limp), log"]
+    A -- no --> B{"planned motion over and<br/>> 8 steps short of the target?"}
+    B -- no --> OK["nothing to do"]
+    B -- yes --> C{"position unchanged<br/>for 0.3 s?"}
+    C -- no --> OK
+    C -- yes --> D["new target = stop position + 30 steps<br/>(15 steps from 60 C)"]
+```
+
+30 steps ≈ 0.17 rad of error: a firm grip that doesn't push at the full error indefinitely. A new command resets it.
+
+**Limitation found:** the servo reports its shaft angle, and it reads ~1.01 rad both on an empty claw and with a tape
+wall between the fingers — give in the drive train (horn/gears) absorbs the difference. Position therefore can't
+tell "gripping" from "empty"; that is what the INA219 (current into the servo) is for.
 
 **Session key.** `createEntities()` sets the micro-ROS client key to a value derived from the MAC. With the default
 (random per boot) the agent kept the previous session's entities after every reboot, which showed up as ghost
@@ -184,9 +211,10 @@ length and the right id, **skipping** anything else (e.g. the adapter echoing ou
 
 | Topic | Solution |
 |---|---|
-| Credentials | `wifi.env` (git-ignored): `QBAG_WIFI_SSID`, `QBAG_WIFI_PASSWORD`, `QBAG_AGENT_IP` (192.168.1.171), `QBAG_AGENT_PORT` (8888), `QBAG_OTA_PASSWORD`, `QBAG_OTA_HOST`, `QBAG_STATIC_IP`. `scripts/load_env.py` (pre-script) turns them into `-D` defines; environment variables override. |
-| 2.4 GHz only | The C3 has no 5 GHz radio; it joins "NamNet" (three APs on channels 1/6/11) |
-| Packet loss | At full TX power the board lost 30–80 % of packets (small antenna/RF layout). TX power 8.5 dBm + modem sleep off + strongest AP: 0 % loss, ~5 ms, RSSI ≈ −57 dBm |
+| Network | **`qbarm-claw`**, qBArm's own access point on a second USB Wi-Fi adapter next to the arm (see [infrastructure](11-infrastructure.md)). On the arm, through the building Wi-Fi, the board lost up to 75 % of its packets; on `qbarm-claw`: 0 % loss, ~4 ms, RSSI ≈ −42 dBm. No fallback network: without qBArm the claw has no agent anyway. |
+| Credentials | `wifi.env` (git-ignored): `QBAG_WIFI_SSID` (qbarm-claw), `QBAG_WIFI_PASSWORD`, `QBAG_AGENT_IP` (10.42.0.1), `QBAG_AGENT_PORT` (8888), `QBAG_OTA_PASSWORD`, `QBAG_OTA_HOST` (10.42.0.10). `scripts/load_env.py` (pre-script) turns them into `-D` defines; environment variables override. |
+| Address | DHCP from qBArm, fixed per MAC (claw 10.42.0.10) |
+| TX power | 8.5 dBm and modem sleep off: at full power these small boards distort (30–80 % loss on the desk) |
 | OTA | ArduinoOTA with password, hostname `qbag-xxxxxx`; the servo is released (limp) when an update starts. `scripts/ota_auth.py` (post-script) passes the password to espota, because the platform resets the uploader flags after pre-scripts |
 
 ## Build environments (`platformio.ini`)

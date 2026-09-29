@@ -11,7 +11,8 @@ Runbook for daily use: starting and stopping, picking, calibration, recovery, sa
 > 3. **Never power the ESP32 from the buck converter and USB at the same time** (back-feed into the PC's USB port).
 > 4. After a fault or an emergency stop, **a person recovers the arm** (clear the error, move it clear). The software
 >    does not retry.
-> 5. Don't leave the claw squeezing an object for long: the servo heats up while holding (watch `/claw/temperature`).
+> 5. Don't leave the claw squeezing an object for long: the servo heats up while holding (watch `/claw/temperature`;
+>    the firmware derates from 60 °C and goes limp at 70 °C — a held object then drops).
 
 ## Start and stop
 
@@ -54,6 +55,7 @@ ros2 topic pub -r 1 /claw/command std_msgs/msg/Float64 "{data: 0.96}"   # close
 ros2 topic pub -r 1 /claw/torque std_msgs/msg/Bool "{data: false}"      # limp: move it by hand
 ros2 topic echo /claw/joint_states --field position
 ros2 topic echo /claw/temperature
+ros2 topic echo /claw/rssi                                              # Wi-Fi signal (dBm)
 ```
 
 Use `-r 1` for a few seconds instead of `--once`: a one-shot publisher can exit before discovery has matched it.
@@ -102,7 +104,9 @@ cd ~/prj/qb_arm_gripper && pio run -e gripper_ota -t upload
 | `CheckStartStateCollision ... claw_* - link_base` | the arm is at/near the zero pose (sim: `sim_ready_pose` should have moved it) |
 | `Invalid Trajectory: start point deviates` | the arm moved between planning and execution, or two executors are running: `cell status` |
 | `Claw did not reach X rad` after closing | expected when gripping (the object stops the fingers) |
-| Claw topics missing | ESP32 not powered / not on Wi-Fi: `ping 192.168.1.123`; agent: `systemctl status ros2-microros-agent` |
+| Claw topics missing | ESP32 not powered / not on Wi-Fi: `ping 10.42.0.10`, `iw dev wlxec750c316d15 station dump` (is it connected to `qbarm-claw`?), `nmcli con show --active` (is `qbarm-claw` up?); agent: `systemctl status ros2-microros-agent` |
+| `qbarm-claw` won't start: dnsmasq "address in use" | an orphaned dnsmasq from a crashed NetworkManager: `pgrep -a dnsmasq`, kill the one with `10.42.0.1`, `sudo nmcli con up qbarm-claw` |
+| "Nothing grasped" although the object was held | the empty check (`check_grip`) can't tell from servo position alone; keep it off until the INA219 is fitted |
 | Claw doesn't move, but answers | servo supply off (voltage ~3.3 V instead of ~7.3 V) |
 | Detection fails / slow | GPU server: `curl http://hbh-ai.local:8770/health`; on hbh-ai `docker compose logs -f` |
 | `Overrun detected!` in the log | controller loop timing under CPU load (no real-time kernel); harmless unless constant |

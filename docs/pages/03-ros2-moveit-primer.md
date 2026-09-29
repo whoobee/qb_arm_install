@@ -14,7 +14,7 @@ each other over the network.
 | **Topic** | A named stream of messages; many publishers, many subscribers, fire-and-forget | `/joint_states` (the current angle of every joint, ~150 Hz) |
 | **Service** | Request → one reply, like a function call | `/qb_arm_vision/detect` (prompt in, objects out) |
 | **Action** | A long-running request with feedback and a final result, cancellable | `/execute_trajectory` (move the arm along a path) |
-| **Parameter** | A named setting of a node, loaded from YAML at start | `grip_overshoot: 0.2` in `pick_executor.yaml` |
+| **Parameter** | A named setting of a node, loaded from YAML at start | `grip_target: 1.2` in `pick_executor.yaml` |
 
 Messages have fixed types (`sensor_msgs/JointState`, `geometry_msgs/PoseStamped`, ...). The transport underneath is
 **DDS**; qBArm uses a *discovery server* so nodes find each other without multicast.

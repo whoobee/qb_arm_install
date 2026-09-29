@@ -212,6 +212,7 @@ async function renderStatus() {
   try { s = await (await fetch('/api/status')).json(); } catch (e) { $('#content').innerHTML = '<p class="bad">Status not available</p>'; return; }
   const yes = (ok, t, f) => `<span class="${ok ? 'ok' : 'bad'}">${ok ? (t || 'yes') : (f || 'no')}</span>`;
   const svc = Object.entries(s.services).map(([k, v]) => `<div class="row"><span>${k}</span>${yes(v === 'active', v, v)}</div>`).join('');
+  const ap = `<div class="row"><span>qbarm-claw (access point)</span>${yes(s.access_point, 'up', 'down')}</div>`;
   const hosts = Object.entries(s.hosts).map(([k, v]) => `<div class="row"><span>${k}</span>${yes(v, 'reachable', 'no answer')}</div>`).join('');
   const c = s.cell;
   const cell = c.running
@@ -224,7 +225,7 @@ async function renderStatus() {
   $('#content').innerHTML = `<h1>Live status</h1><p class="muted">qBArm, ${s.time} · refreshes every 5 s</p>
     <div class="status-grid">
       <div class="card"><h3>Cell (cell script)</h3>${cell}</div>
-      <div class="card"><h3>System services</h3>${svc}</div>
+      <div class="card"><h3>System services</h3>${svc}${ap}</div>
       <div class="card"><h3>Hardware on the network</h3>${hosts}</div>
       <div class="card"><h3>Vision GPU server (hbh-ai)</h3>${gpu}</div>
     </div>`;

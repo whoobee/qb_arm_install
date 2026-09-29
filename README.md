@@ -26,6 +26,7 @@ already there. Takes roughly 15–30 minutes, mostly downloads and the workspace
 | Real-time | `realtime` group + `/etc/security/limits.d/99-realtime.conf` for ros2_control |
 | ESP32 | `dialout` group, pip/venv/pipx, `esptool` (pipx), PlatformIO Core (`pio`) + its udev rules, [qb_arm_gripper](https://github.com/whoobee/qb_arm_gripper) cloned to `~/prj/qb_arm_gripper` |
 | micro-ROS agent | micro-ROS-Agent + micro_ros_msgs (jazzy) built in the workspace, systemd `ros2-microros-agent.service` on UDP 8888 for the claw's ESP32 |
+| Claw access point | `qbarm-claw`: NetworkManager access point on a second (USB) Wi-Fi adapter, 2.4 GHz channel 1, qBArm = 10.42.0.1, fixed addresses for the claw boards (10.42.0.10/.11); password in `~/prj/qb_arm_gripper/wifi.env` |
 | Documentation | systemd `qb-arm-docs.service`: serves [docs/](docs/) on http://&lt;this machine&gt;:8080 |
 
 Repositories (branch `develop`):
@@ -53,6 +54,7 @@ Repositories (branch `develop`):
 --no-esp              skip the ESP32 tools (dialout, esptool, PlatformIO) and the qb_arm_gripper clone
 --no-microros-agent   skip the micro-ROS agent (build + ros2-microros-agent.service) for the gripper
 --no-docs             don't install the documentation server (qb-arm-docs.service, port 8080)
+--no-claw-ap          don't set up qbarm-claw, the access point for the claw (needs a USB Wi-Fi adapter)
 ```
 
 The repos are private, so cloning over SSH needs a key on your GitHub account
