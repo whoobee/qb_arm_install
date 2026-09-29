@@ -192,7 +192,9 @@ self-filter padding 5 cm (points this close to the robot are not obstacles).
 
 ### `planning_scene_setup`
 
-Waits for `move_group`, adds `table`: a 2 × 2 × 0.04 m box, top at z = −0.005 (just below the robot base), exits.
+Waits for `move_group`, adds `table`: a 2 × 2 × 0.04 m box whose top follows the measured table plane
+(`config/table.yaml`, tilted 0.87°), or level at z = −0.005 without a measurement; waits up to 30 s per attempt, 3
+attempts (right after start-up move_group can take longer than 10 s — the table was once silently missing), exits.
 
 ### Calibration scripts
 
@@ -205,6 +207,7 @@ Waits for `move_group`, adds `table`: a 2 × 2 × 0.04 m box, top at z = −0.00
 |---|---|
 | `config/claw.yaml` | claw mounting: `mount_offset`, `mount_yaw`, `tcp_depth` |
 | `config/camera_pose.yaml` | camera pose in `world`: x, y, z, `up_in_camera` (tilt), `yaw` |
-| `config/obstacles.yaml` | `obstacle_cloud` and `planning_scene_setup` parameters |
+| `config/obstacles.yaml` | `obstacle_cloud` (keyed `/**/obstacle_cloud`, it runs in `/kinect`) and `planning_scene_setup` parameters |
+| `config/table.yaml` | measured table plane (`measure_table`), keyed `/**` |
 | `config/sensors_3d.yaml` | MoveIt 3D sensor (octomap) configuration |
 | `rviz/qb_arm.rviz` | RViz layout: MoveIt motion planning (group `lite6`), detections image, markers |

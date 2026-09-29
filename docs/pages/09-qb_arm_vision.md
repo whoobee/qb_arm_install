@@ -159,11 +159,13 @@ can't disagree. Values from `qb_arm/urdf/qbag.xacro`: the crank vector from the 
 | `gripper_depth` | 0.1034 m | Panda hand frame → finger contacts |
 | `grasps_per_object` | 5 | |
 | `table_z` | 0.0 m | table surface in `world` |
-| `min_object_height`, `max_object_height` | 0.01, 0.4 m | |
+| `min_object_height`, `max_object_height` | 0.005, 0.4 m | above the table plane |
 | `workspace_radius` | 0.8 m | around the robot base |
 | `reach` | 0.44 m | only for the "out of reach" hint in the debug image |
 | `edge_threshold` | 0.02 m | flying-pixel filter |
-| `fingertip_clearance` | 0.005 m | closed claw's fingertips above the table |
+| `fingertip_clearance` | 0.003 m | fully closed claw's fingertips above the table plane |
+| `table_plane` | from qb_arm `config/table.yaml` | measured table plane a, b, c (`z = a·x + b·y + c`) |
+| `slice_grasp_score`, `slice_step` | 0.2, 0.01 m | narrow-slice grasps (flat/long objects) |
 | `fallback_grasp_score`, `top_slice` | 0.1, 0.03 m | top-slice fallback grasp |
 | `max_grasp_depth` | 0.025 m | network grasps: max TCP depth below the object top |
 | `finger_margin`, `max_finger_hits` | 0.01 m, 5 | finger-landing check |
@@ -172,6 +174,10 @@ can't disagree. Values from `qb_arm/urdf/qbag.xacro`: the crank vector from the 
 | `timeout` | 60 s | server request |
 
 `pick_executor` parameters: see [pick execution](06-pick-execution.md#parameters).
+
+**Parameter files** are keyed `/**/object_detector:` and `/**/pick_executor:`: the nodes run in the namespace
+`/qb_arm_vision`, and a plain `object_detector:` key matches nothing (until 2026-09-29 the files were silently ignored).
+The config files are copied at build time (`colcon build`), not symlinked.
 
 ## The GPU server
 

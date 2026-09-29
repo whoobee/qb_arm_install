@@ -4,7 +4,7 @@
 
 ## Where we are
 
-**The cell has done its first complete real pick:** a tape roll lying flat on the table was detected by the ceiling
+**The cell picks real objects:** the first was a tape roll lying flat on the table was detected by the ceiling
 camera, grasped by its rim, lifted 10 cm, held, and dropped again on command. Every part of the chain is in place
 and has run on the real hardware:
 
@@ -29,7 +29,7 @@ flowchart LR
 | Ceiling Kinect + extrinsic calibration | Working. Camera pose from IMU tilt + ICP against the robot meshes, 4 mm RMS. |
 | Obstacle avoidance (octomap) | Built and tested in sim, **off by default** in the cell (it also sees the object to pick). |
 | Detection / segmentation / grasps (GPU server) | Working, ~3.7 s per request (Contact-GraspNet ~2.5 s of it). |
-| Grasp logic for the claw | Working: CGN grasps + ring (rim) grasps + top-slice fallback, finger-landing check, closing-claw geometry. |
+| Grasp logic for the claw | Working: CGN grasps + ring (rim) grasps + narrow-slice grasps for flat/long objects + top-slice fallback, finger-landing check, closing-claw geometry, heights above the measured table plane. Picked: tape roll (rim), pliers (7 mm high, across the jaws). |
 | Pick executor | Working on the real arm: pre-grasp → straight approach → close → attach → lift; release. |
 | Claw hardware + firmware | Mounted on the arm (20 mm plate, −45°), calibrated, micro-ROS over **qBArm's own access point** `qbarm-claw` (0 % loss, ~4 ms), OTA updates, servo heat guard. |
 | Grip | Closes to 1.2 rad (past pads-touching) and waits until the fingers stop; the servo pushes with the remaining error, limited by the firmware's stall guard. **No reliable "object held" signal yet**: servo position reads ~1.01 rad both empty and on a tape wall → INA219 current sensor ordered. |
@@ -63,6 +63,7 @@ flowchart LR
 | 2026-09-29 | Claw mounted on the arm: 20 mm plate, −45° about the flange axis. |
 | 2026-09-29 | Documentation + docs server (this site). |
 | 2026-09-29 | Grip rework (close past closed, stop detection, heat guard); claw moved to qBArm's own access point `qbarm-claw`; INA219 support in the firmware. |
+| 2026-09-29 | Table measured as a plane (tilted 0.87°); narrow-slice grasps; parameter-file fix; **first flat object picked (pliers)**. |
 | 2026-09-29 | First real picks: two crashes (see below), both fixed; `cell` script; **first successful real pick**. |
 
 ## Lessons learned (incidents and their fixes)
@@ -82,6 +83,9 @@ These are worth reading: each one changed the design.
 | 9 | "Nothing grasped" although the tape was between the fingers; servo at 66 °C | The servo reads ~1.01 rad both empty and on the tape (give in the drive train), so position can't show contact; pushing at full error heats the servo | Empty check off by default; firmware stall guard (hold with 30 steps after 0.3 s, derate from 60 °C, limp from 70 °C); INA219 ordered |
 | 10 | Claw link lost up to 75 % of the packets; OTA impossible | ESP32 on the arm among metal, far from the building access points | Second Wi-Fi adapter on qBArm (TP-Link Archer T4U v3) running the access point `qbarm-claw` next to the arm: 0 % loss, ~4 ms, RSSI −42 dBm |
 | 11 | NetworkManager crashed (assertion) on a `systemctl reload`; the access point's dnsmasq was left orphaned | NetworkManager bug on reload | Don't reload NetworkManager; if it happens: kill the orphaned dnsmasq, `nmcli con up qbarm-claw` |
+| 12 | Pliers dropped as "height 0 cm" | The table is tilted 0.87° against the robot base (−1.7 mm at the base, −6 mm at 30 cm) and heights were measured from z = 0; minimum height 1 cm; thin metal reads flat in depth (7 mm) | `measure_table` → table plane used for heights, fingertip clearance and MoveIt's table; minimum 5 mm; clearance 3 mm |
+| 13 | Changing `fingertip_clearance` in the YAML had no effect | The vision nodes run in `/qb_arm_vision`, the YAML was keyed `object_detector:` → never applied; code defaults happened to equal the files | Keys `/**/<node>:` (also `obstacle_cloud` in `/kinect`) |
+| 14 | MoveIt's table was missing after some starts | `planning_scene_setup` waited only 10 s; move_group answers slowly right after start-up | 30 s timeout, 3 attempts |
 
 > **Safety rule born from this:** with the claw mounted, the arm's **all-zero joint pose** (xArm "home",
 > UFACTORY app "go home") puts the claw **into the robot base**. Never send the real arm there.

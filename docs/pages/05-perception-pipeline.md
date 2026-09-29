@@ -132,8 +132,11 @@ in the camera's optical frame, then `p_world = R · p_cam + t` with `T_world_cam
 - **Outlier removal in xy**: compute the median xy of the points and each point's distance to it; keep points
   closer than `max(3 × median distance, 2 cm)`. Remaining background pixels are far away and go.
 - **Workspace**: drop objects whose median is more than `workspace_radius` (0.8 m) from the robot base.
-- **Height**: `top` = 95th percentile of z (robust against a few noisy points); `height = top − table_z`. Objects
-  outside 1–40 cm height are dropped.
+- **Height**: `top` = 95th percentile of z (robust against a few noisy points); `height = top − table(x, y)`, where
+  `table(x, y) = a·x + b·y + c` is the **measured table plane** under the object (`table_plane` from qb_arm's
+  `config/table.yaml`, measured with `measure_table`; the table is tilted 0.87° against the robot base, −1.7 mm at the
+  base, −6 mm at 30 cm). Without a plane: the table seen in a ring 4–12 px around the mask. Objects outside
+  5 mm–40 cm are dropped. Thin metal reads flat in depth (pliers: 7 mm).
 - **Footprint**: keep xy between the 2nd and 98th percentile per axis; the **minimum-area rectangle** around them
   (OpenCV `minAreaRect`) gives the footprint centre, long and short side and the yaw of the long side.
 
@@ -163,7 +166,8 @@ For each network grasp `Tg` (in the camera frame):
 6. **Closing drop**: `− drop(claw_angle(width)) · approach` — the claw's pads reach the object deeper than their open
    position, so the TCP goes back by that much (see the [grasping primer](04-grasping-primer.md)).
 7. **Table clearance**: `keep_fingertips_above` — if the fingertips of the *fully closed* claw would be lower than
-   `table_z + fingertip_clearance` (5 mm), move the grasp back along its approach until they are not.
+   the table plane under the object + `fingertip_clearance` (3 mm), move the grasp back along its approach until they
+   are not.
 8. **Depth limit**: drop grasps whose TCP is more than `max_grasp_depth` (25 mm) below the object's top — deeper, the
    claw's palm would hit the object.
 
@@ -195,7 +199,17 @@ For each of the 12 directions `a = k · 30°` with radial unit vector `r̂`:
 On the bench tape roll this finds a hole radius of 31–33 mm and an outer radius of 47–48 mm; with the claw open
 (70 mm) each finger has ~30 mm clearance to the wall on its side.
 
-### 4c. Top-slice fallback (`top_down_grasp`)
+### 4c. Narrow-slice grasps for flat and long objects (`slice_grasps`)
+
+Added for the pliers: Contact-GraspNet returns no grasps for objects a few millimetres high, and the whole outline (68 mm
+with open handles) is too wide for the claw. The top of the object is cut into 1 cm strips across its long axis
+(minimum-area rectangle); for every strip whose width (5th–95th percentile across, + 4 mm) is at most 55 mm, a grasp
+straight down across the strip, pads 15 mm below the top or at half the height (+ closing drop), then the table
+clearance. Score `0.2 · (1 − 0.5·|offset from the middle| / half length) − 0.05 · distance from the base`: strips near
+the middle first. The finger-landing check then drops strips where a finger would come down on another part (the
+other handle). Pliers: 8–9 strips, picked across the jaws.
+
+### 4c'. Top-slice fallback (`top_down_grasp`)
 
 Only when the object is not a ring: take the points in the top 3 cm (`top_slice`), fit a minimum-area rectangle,
 and if its short side ≤ 65 mm, grasp straight down across the short side, pads 15 mm below the top (+ closing

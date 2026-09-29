@@ -87,6 +87,14 @@ against a crude robot model:
 The 6-DOF run confirmed the IMU tilt within 0.2°, so the default keeps the tilt fixed (fewer parameters, more
 robust). Note: the user's first hand measurement had x and y swapped (robot X points to the front).
 
+### `measure_table` — the table plane
+
+Averages 10 depth frames (median per pixel), deprojects them into `world`, keeps points 12–55 cm from the base within
+3 cm of z = 0, and fits `z = a·x + b·y + c` by robust least squares (four rounds, dropping points more than 3× the
+median residual off). Result (2026-09-29): `a −0.01468, b −0.00354, c −0.00170`, 1.7 mm RMS: the table is tilted 0.87°
+against the robot base. `--apply` writes `config/table.yaml` (keyed `/**`), which `planning_scene_setup` (MoveIt's table
+box, tilted to the plane) and the object detector (heights, fingertip clearance) read.
+
 ### Limits
 
 - The camera sees the robot mostly from above; poses where the arm spans a large volume give the best fits.

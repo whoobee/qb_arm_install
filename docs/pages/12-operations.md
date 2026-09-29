@@ -83,10 +83,11 @@ power-cycling the arm).
 | Camera tilt | camera still, cell (or `kinect`) running: `ros2 run qb_arm measure_camera_tilt` |
 | Camera yaw (unknown) | arm visible: `ros2 run qb_arm fit_camera_yaw --apply` |
 | Camera pose (fine) | `ros2 run qb_arm refine_camera_pose --apply` (4-DOF; `--full` for 6-DOF) |
+| Table plane | table mostly clear: `ros2 run qb_arm measure_table --apply` (after moving the table or the camera) |
 | Claw open/closed positions | torque off, move by hand to each end, read `/claw/joint_states`, set `CLAW_OPEN_POS`/`CLAW_CLOSED_POS` in `platformio.ini`, `pio run -e gripper_ota -t upload` |
 | Claw mounting | `config/claw.yaml` (`mount_offset`, `mount_yaw`), check the model against the real claw in RViz |
 
-Restart the cell after changing YAML files.
+Restart the cell after changing YAML files; for qb_arm_vision's config also `colcon build` (its config files are copied, not symlinked).
 
 ## Firmware update
 
