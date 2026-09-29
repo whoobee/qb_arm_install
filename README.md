@@ -24,6 +24,7 @@ already there. Takes roughly 15–30 minutes, mostly downloads and the workspace
 | Environment | writes `~/prj/ros2_ws/ros_env.sh` and sources it from `~/.bashrc` |
 | Network | Fast DDS discovery server as systemd service `ros2-discovery.service` (UDP 11811) |
 | Real-time | `realtime` group + `/etc/security/limits.d/99-realtime.conf` for ros2_control |
+| ESP32 | `dialout` group, pip/venv/pipx, `esptool` (pipx), PlatformIO Core (`pio`) + its udev rules |
 
 Repositories (branch `develop`):
 
@@ -46,6 +47,7 @@ Repositories (branch `develop`):
 --no-bashrc           don't add the ROS environment to ~/.bashrc
 --no-discovery-server don't install the Fast DDS discovery server service
 --no-realtime         don't grant real-time scheduling to this user
+--no-esp              skip the ESP32 tools (dialout, esptool, PlatformIO)
 ```
 
 The repos are private, so cloning over SSH needs a key on your GitHub account
@@ -55,7 +57,7 @@ The Azure Kinect SDK asks you to accept Microsoft's EULA during install (or pass
 
 ## After installing
 
-Log out and back in once (for the `realtime` group), plug in the Kinect, then in a new terminal:
+Log out and back in once (for the `realtime` and `dialout` groups), plug in the Kinect, then in a new terminal:
 
 ```bash
 qbarm                 # real Lite6 (192.168.1.23) + MoveIt + RViz + Kinect

@@ -16,6 +16,7 @@ DO_BUILD=1
 DO_BASHRC=1
 DO_DISCOVERY=1
 DO_REALTIME=1
+DO_ESP=1
 ACCEPT_K4A_EULA=0
 
 K4A_URL="https://packages.microsoft.com/ubuntu/18.04/prod/pool/main/libk"
@@ -38,6 +39,7 @@ Usage: ./install.sh [options]
   --no-bashrc           don't add the ROS environment to ~/.bashrc
   --no-discovery-server don't install the Fast DDS discovery server service
   --no-realtime         don't grant real-time scheduling to this user
+  --no-esp              skip the ESP32 tools (dialout, esptool, PlatformIO)
   -h, --help            show this help
 EOF
 }
@@ -54,6 +56,7 @@ while [ $# -gt 0 ]; do
         --no-bashrc) DO_BASHRC=0 ;;
         --no-discovery-server) DO_DISCOVERY=0 ;;
         --no-realtime) DO_REALTIME=0 ;;
+        --no-esp) DO_ESP=0 ;;
         -h|--help) usage; exit 0 ;;
         *) echo "Unknown option: $1"; usage; exit 1 ;;
     esac
@@ -229,6 +232,35 @@ if [ $DO_REALTIME -eq 1 ]; then
 fi
 
 # ---------------------------------------------------------------------------
+if [ $DO_ESP -eq 1 ]; then
+    step "ESP32 tools (serial access, esptool, PlatformIO Core)"
+    apt_install python3-pip python3-venv pipx python3-serial
+    sudo usermod -aG dialout "$USER"
+    info "$USER is in group 'dialout' (takes effect after the next login)"
+    if pipx list --short 2>/dev/null | grep -q '^esptool '; then
+        pipx upgrade esptool
+    else
+        pipx install esptool
+    fi
+    retry curl -fsSL -o /tmp/get-platformio.py \
+        https://raw.githubusercontent.com/platformio/platformio-core-installer/master/get-platformio.py
+    python3 /tmp/get-platformio.py
+    rm -f /tmp/get-platformio.py
+    pipx ensurepath >/dev/null
+    mkdir -p "$HOME/.local/bin"
+    for b in pio platformio piodebuggdb; do
+        ln -sf "$HOME/.platformio/penv/bin/$b" "$HOME/.local/bin/$b"
+    done
+    retry curl -fsSL -o /tmp/99-platformio-udev.rules \
+        https://raw.githubusercontent.com/platformio/platformio-core/develop/platformio/assets/system/99-platformio-udev.rules
+    sudo install -m 644 /tmp/99-platformio-udev.rules /etc/udev/rules.d/99-platformio-udev.rules
+    rm -f /tmp/99-platformio-udev.rules
+    sudo udevadm control --reload-rules
+    sudo udevadm trigger
+    info "esptool $("$HOME/.local/bin/esptool" version | tail -1), $("$HOME/.local/bin/pio" --version)"
+fi
+
+# ---------------------------------------------------------------------------
 cat <<EOF
 
 ==========================================
@@ -244,5 +276,5 @@ Open a new terminal (or: source $WS/ros_env.sh), then:
 Other machines on the network join with:
   export ROS_DISCOVERY_SERVER=<this machine's IP>:11811 ROS_SUPER_CLIENT=TRUE
 
-Log out and back in once so the 'realtime' group applies.
+Log out and back in once so the 'realtime' and 'dialout' groups apply.
 EOF
