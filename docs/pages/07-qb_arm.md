@@ -199,6 +199,14 @@ keep-out zone of `config/boundaries.yaml` (red, translucent in RViz); waits up t
 after start-up move_group can take longer than 10 s — the table was once silently missing). Then it checks the arm's
 current state against the zones (an arm already inside one makes every plan fail: logged as an error) and exits.
 
+### `boundary_editor`
+
+`ros2 run qb_arm boundary_editor [--port 8081] [--file ...]`: a web page to draw the vision and no-go zones on a top
+view of the table (the colour image warped onto the table plane, 2.5 mm per pixel, x up / y left), validate them with
+`boundaries.load`, preview them in the camera view (`image_outside` + `draw` on a fresh snapshot), save them (backup
+of the old file) and optionally restart the cell. Stdlib HTTP server + rclpy (snapshots on request); the page is
+`web/boundary_editor.html`, no external libraries. See [operations](12-operations.md#boundaries-where-the-camera-looks-where-the-arm-may-never-go).
+
 ### `show_boundaries`
 
 `ros2 run qb_arm show_boundaries [--output boundaries.png]`: the live camera image with the vision workspace (green,
@@ -211,8 +219,9 @@ Read-only.
 `config/boundaries.yaml`, loaded by `qb_arm/boundaries.py` (shared with qb_arm_vision's object_detector):
 
 ```yaml
-vision_workspace:          # the camera only looks for objects in here
-  polygon: [[-0.50, -0.60], [0.45, -0.60], [0.45, 0.50], [-0.50, 0.50]]   # [x, y] corners, any simple polygon
+vision_workspace:          # the camera only looks for objects in here (in any of the polygons)
+  polygons:                # [x, y] corners, any simple polygon; `polygon:` for a single one
+    - [[-0.50, -0.60], [0.45, -0.60], [0.45, 0.50], [-0.50, 0.50]]
   z_min: -0.05             # below: floor, chair
   z_max: 0.50
 keep_out_margin: 0.03      # MoveIt gets every box this much bigger (it checks the arm at discrete points only)

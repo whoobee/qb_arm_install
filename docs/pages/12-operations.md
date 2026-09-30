@@ -62,6 +62,17 @@ it can't be checked (place elsewhere, or move the arm away first).
 
 ## Boundaries: where the camera looks, where the arm may never go
 
+**Editor** — `ros2 run qb_arm boundary_editor`, then open **http://192.168.1.171:8081**: a top view of the table
+made from the camera (the image projected onto the table plane, so rectangles are rectangles in robot coordinates;
+tall things look stretched). **+ vision zone** (green, drag its corners freely) / **+ no-go zone** (red box: drag
+to move, corners to resize; heights, turn and name in the side panel; the dashed outline is the MoveIt margin).
+Heights: one z range for all vision zones, one per no-go zone (a liftable desk: from the floor to above the arm's
+reach). The zones are checked live exactly as the cell checks them; **Preview in camera view** shows what the
+camera would ignore; **Save** writes the file (the old one is kept as `boundaries.yaml.<time>.bak`), **Save &
+restart cell** also restarts the cell (the arm doesn't move). Stop the editor with Ctrl-C.
+
+By hand:
+
 `~/prj/ros2_ws/src/qb_arm/config/boundaries.yaml`: the **vision workspace** (a polygon on the table; the detector
 ignores everything outside it) and the **keep-out zones** (boxes MoveIt never lets the arm enter, e.g. the desk).
 After editing: `cell stop`, `cell start real` (no build). A broken file stops the cell with the reason in the log
