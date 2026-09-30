@@ -150,6 +150,7 @@ cd ~/prj/qb_arm_gripper && pio run -e gripper_ota -t upload
 | `cell start` refuses: leftover processes | an earlier run not started with `cell`: `cell stop --force` |
 | `No Kinect images` / `Failed to open K4A device` | the camera was still held by a previous driver; `cell stop`, wait a few seconds, start again |
 | `No reachable grasp for <object>` | object too far (> ~33 cm from the base for top-down grasps), or the start state is invalid (check the log for `CheckStartStateCollision`) |
+| Every pick/place fails ("no reachable …"), log: `Joint 'jointN' from the starting state is outside bounds` | the arm stopped a hair past a ±2π limit (float rounding); the executor clamps values within 1 mrad of a limit (since 3edbb84); further out: jog that joint inward by hand |
 | `CheckStartStateCollision ... claw_* - link_base` | the arm is at/near the zero pose (sim: `sim_ready_pose` should have moved it) |
 | `Invalid Trajectory: start point deviates` | the arm moved between planning and execution, or two executors are running: `cell status` |
 | `Claw did not reach X rad` after closing | expected when gripping (the object stops the fingers) |
