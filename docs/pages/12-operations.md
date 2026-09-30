@@ -34,16 +34,17 @@ Discovery through the discovery server is slow: CLI tools may need 10–15 s bef
 ## Detect and pick
 
 ```bash
-# detect (prompt: phrases separated by ". ")
+# detect (prompt: phrases separated by ". "; descriptive phrases work best: "white bin." rather than "bin.")
+# the reply lists the objects by name: white_bin, tape_1, tape_2 (same name: nearest to the robot first)
 ros2 service call /qb_arm_vision/detect qb_arm_vision_interfaces/srv/Detect "{prompt: 'tape roll. bottle.'}"
 # plan only - check the plan in RViz
-ros2 service call /qb_arm_vision/pick qb_arm_vision_interfaces/srv/Pick "{object_id: obj_1, plan_only: true}"
+ros2 service call /qb_arm_vision/pick qb_arm_vision_interfaces/srv/Pick "{object_id: tape, plan_only: true}"
 # execute
-ros2 service call /qb_arm_vision/pick qb_arm_vision_interfaces/srv/Pick "{object_id: obj_1}"
+ros2 service call /qb_arm_vision/pick qb_arm_vision_interfaces/srv/Pick "{object_id: tape}"
 # set it down at a point on the table ((0, 0) = back where it was picked)
 ros2 service call /qb_arm_vision/place qb_arm_vision_interfaces/srv/Place "{position: {x: 0.25, y: 0.10}}"
 # or relative to a detected object: on / into / next_to (side: left, right, front, back or empty = any)
-ros2 service call /qb_arm_vision/place qb_arm_vision_interfaces/srv/Place "{relation: next_to, reference: obj_3}"
+ros2 service call /qb_arm_vision/place qb_arm_vision_interfaces/srv/Place "{relation: next_to, reference: white_bin}"
 # or open the claw and drop it where it is
 ros2 service call /qb_arm_vision/release std_srvs/srv/Trigger
 ```
@@ -108,7 +109,7 @@ cd ~/prj/qb_arm_gripper && pio run -e gripper_ota -t upload
 |---|---|
 | `cell start` refuses: leftover processes | an earlier run not started with `cell`: `cell stop --force` |
 | `No Kinect images` / `Failed to open K4A device` | the camera was still held by a previous driver; `cell stop`, wait a few seconds, start again |
-| `No reachable grasp for obj_N` | object too far (> ~33 cm from the base for top-down grasps), or the start state is invalid (check the log for `CheckStartStateCollision`) |
+| `No reachable grasp for <object>` | object too far (> ~33 cm from the base for top-down grasps), or the start state is invalid (check the log for `CheckStartStateCollision`) |
 | `CheckStartStateCollision ... claw_* - link_base` | the arm is at/near the zero pose (sim: `sim_ready_pose` should have moved it) |
 | `Invalid Trajectory: start point deviates` | the arm moved between planning and execution, or two executors are running: `cell status` |
 | `Claw did not reach X rad` after closing | expected when gripping (the object stops the fingers) |

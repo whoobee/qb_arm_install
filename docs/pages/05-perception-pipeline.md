@@ -245,12 +245,20 @@ passed the tape at 3.7 mm.
 
 All surviving grasps (network + ring or fallback) are sorted by score; the best 5 (`grasps_per_object`) are kept.
 
+## Object ids
+
+Ids come from the query (`qb_arm_vision/names.py`): the phrase the detector matched, lower case, words joined by `_`
+(`white bin` → `white_bin`). Several objects with the same name are numbered by distance from the robot base, nearest
+first (`tape_1`, `tape_2`). While the claw holds an object its id is reserved (a second screwdriver becomes
+`screwdriver_1`). The services accept the name typed with spaces or capitals (`"white bin"`). Grounding DINO works best
+with descriptive phrases: `bin.` found nothing where `white bin.` scored 0.77.
+
 ## Outputs
 
 | Output | Content |
 |---|---|
-| Service response / `/qb_arm_vision/objects` (latched) | `Object[]`: id `obj_<n>`, label, score, pose, size, shape, grasps (best first) |
-| MoveIt planning scene | previous `obj_*` removed; each object added as a mesh collision object |
+| Service response / `/qb_arm_vision/objects` (latched) | `Object[]`: id (`white_bin`, `tape_1`), label, score, pose, size, shape, grasps (best first) |
+| MoveIt planning scene | the previous detection's objects removed; each object added as a mesh collision object |
 | `/qb_arm_vision/markers` (latched) | object hulls (blue = has grasps, grey = none), labels, grasps as claw outlines (green = best) |
 | `/qb_arm_vision/debug_image` (latched) | colour image with masks, boxes, labels, reasons for dropped detections, the best grasp's finger positions, "out of reach" hints |
 

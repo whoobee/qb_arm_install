@@ -104,7 +104,7 @@ float32 score        # 0..1 (Contact-GraspNet confidence, or the geometric grasp
 float32 width        # m, opening needed
 
 # msg/Object.msg — an object found on the table
-string id                  # collision object id in MoveIt's planning scene, e.g. "obj_3"
+string id                  # collision object id in MoveIt's planning scene, from the query: "white_bin", "tape_2"
 string label               # detector label, e.g. "tape roll"
 float32 score              # detector confidence
 geometry_msgs/PoseStamped pose   # centre of the bounding box, z up, x along the long side

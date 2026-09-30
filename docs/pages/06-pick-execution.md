@@ -59,7 +59,7 @@ flowchart TB
 
 The approach ends *inside* the object's collision shape (the fingers go around it, and the extruded hull is solid,
 hole included), so the pick edits the planning scene's **allowed collision matrix**: every claw link
-(`other_geometry_link`, cranks, fingers, rockers) may touch `obj_<n>`. Everything else — arm links vs. the object,
+(`other_geometry_link`, cranks, fingers, rockers) may touch the target object. Everything else — arm links vs. the object,
 claw vs. table, claw vs. other objects — is still checked.
 
 ### 2. Candidates
@@ -120,14 +120,14 @@ the controller aborts the trajectory and MoveIt reports error −4; the arm must
 | `relation` | Where | Surface its bottom goes to |
 |---|---|---|
 | `""` | its centre at `position` (x, y in `world`; (0, 0) = back where it was picked) | the table plane |
-| `"on"` | centred on `reference` (an object id from the latest detection) | the reference's top + 3 mm |
+| `"on"` | centred on `reference` (an object id from the latest detection, e.g. `white_bin`) | the reference's top + 3 mm |
 | `"into"` | above `reference` (cup, box, …): the centre, or — if that is out of reach — shifted towards the robot inside the opening in 2 cm steps as long as it still fits | the reference's rim + 1 cm, then released (the camera can't see how deep it is) |
 | `"next_to"` | beside `reference` on `side` (`left` +y, `right` −y, `front` +x away from the robot, `back`; empty = every side, nearest to the robot first), `gap` apart (default 2 cm) | the table plane |
 
 ```bash
-ros2 service call /qb_arm_vision/place qb_arm_vision_interfaces/srv/Place "{relation: next_to, reference: obj_3}"
-ros2 service call /qb_arm_vision/place qb_arm_vision_interfaces/srv/Place "{relation: on, reference: obj_3, plan_only: true}"
-ros2 service call /qb_arm_vision/place qb_arm_vision_interfaces/srv/Place "{relation: into, reference: obj_2}"
+ros2 service call /qb_arm_vision/place qb_arm_vision_interfaces/srv/Place "{relation: next_to, reference: white_bin}"
+ros2 service call /qb_arm_vision/place qb_arm_vision_interfaces/srv/Place "{relation: on, reference: white_bin, plan_only: true}"
+ros2 service call /qb_arm_vision/place qb_arm_vision_interfaces/srv/Place "{relation: into, reference: white bin}"
 ```
 
 - **next_to spacing**: the reference's outline and the held object's outline (the detector's convex hulls, not their
@@ -140,8 +140,9 @@ ros2 service call /qb_arm_vision/place qb_arm_vision_interfaces/srv/Place "{rela
   is unknown; the next detection sees it).
 - **The opening claw is collision-checked**: the claw opens without a plan, so before a candidate is accepted MoveIt
   checks the final pose at claw angles from the gripped one down to fully open in 0.12 rad steps
-  (`/check_state_validity`, whole robot, no group — a group would leave out the claw links). Part-way the fingers are
-  already outside the object but still low. A candidate whose fingers would hit the reference, another object or the
+  (`/check_state_validity` with the claw's group `qbag`: only the moving claw links; a whole-robot check also failed on
+  unrelated contacts, e.g. a bin's outline touching the robot base). Part-way the fingers are already outside the object
+  but still low. A candidate whose fingers would hit the reference, another object or the
   table is skipped.
 - **next_to** uses the whole open claw's reach (pads 46 mm, finger knuckles 64 mm along the closing axis, palm 35 mm
   across) and refuses a reference that stands on something unmodelled (its support would be under the held object).
@@ -216,8 +217,8 @@ tunes them without a restart.
 ```bash
 cell start real
 ros2 service call /qb_arm_vision/detect qb_arm_vision_interfaces/srv/Detect "{prompt: 'tape roll.'}"
-ros2 service call /qb_arm_vision/pick qb_arm_vision_interfaces/srv/Pick "{object_id: obj_1, plan_only: true}"
-ros2 service call /qb_arm_vision/pick qb_arm_vision_interfaces/srv/Pick "{object_id: obj_1}"
+ros2 service call /qb_arm_vision/pick qb_arm_vision_interfaces/srv/Pick "{object_id: tape, plan_only: true}"
+ros2 service call /qb_arm_vision/pick qb_arm_vision_interfaces/srv/Pick "{object_id: tape}"
 ros2 service call /qb_arm_vision/place qb_arm_vision_interfaces/srv/Place "{position: {x: 0.25, y: 0.10}}"
 # or drop it where it is:
 ros2 service call /qb_arm_vision/release std_srvs/srv/Trigger
