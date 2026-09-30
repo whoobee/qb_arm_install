@@ -19,6 +19,7 @@ DO_REALTIME=1
 DO_ESP=1
 DO_MICROROS=1
 DO_DOCS=1
+DO_CONTROL=1
 DO_CLAW_AP=1
 GRIPPER_DIR="$HOME/prj/qb_arm_gripper"
 ACCEPT_K4A_EULA=0
@@ -46,6 +47,7 @@ Usage: ./install.sh [options]
   --no-esp              skip the ESP32 tools (dialout, esptool, PlatformIO) and the qb_arm_gripper clone
   --no-microros-agent   skip the micro-ROS agent (build + ros2-microros-agent.service) for the gripper
   --no-docs             don't install the documentation server (qb-arm-docs.service, port 8080)
+  --no-control          don't install the control center (qb-arm-control.service, port 8081)
   --no-claw-ap          don't set up qbarm-claw, the access point for the claw (needs a USB Wi-Fi adapter)
   -h, --help            show this help
 EOF
@@ -66,6 +68,7 @@ while [ $# -gt 0 ]; do
         --no-esp) DO_ESP=0 ;;
         --no-microros-agent) DO_MICROROS=0 ;;
         --no-docs) DO_DOCS=0 ;;
+        --no-control) DO_CONTROL=0 ;;
         --no-claw-ap) DO_CLAW_AP=0 ;;
         -h|--help) usage; exit 0 ;;
         *) echo "Unknown option: $1"; usage; exit 1 ;;
@@ -352,6 +355,18 @@ if [ $DO_DOCS -eq 1 ]; then
     sudo systemctl enable qb-arm-docs.service
     sudo systemctl restart qb-arm-docs.service
     info "status: $(systemctl is-active qb-arm-docs.service), pages from $HERE/docs/pages"
+fi
+
+# ---------------------------------------------------------------------------
+if [ $DO_CONTROL -eq 1 ]; then
+    # Needs the workspace built (qb_arm's control_center). It starts the cell, whose RViz opens on the desktop session.
+    step "Control center (systemd: qb-arm-control.service, http://<this machine>:8081)"
+    sed "s#@USER@#$USER#g; s#@UID@#$(id -u)#g; s#@HOME@#$HOME#g" "$HERE/config/qb-arm-control.service.in" \
+        | sudo tee /etc/systemd/system/qb-arm-control.service >/dev/null
+    sudo systemctl daemon-reload
+    sudo systemctl enable qb-arm-control.service
+    sudo systemctl restart qb-arm-control.service
+    info "status: $(systemctl is-active qb-arm-control.service)"
 fi
 
 # ---------------------------------------------------------------------------

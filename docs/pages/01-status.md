@@ -36,6 +36,7 @@ flowchart LR
 | Table model | Measured plane (tilted 0.87° against the robot base, 1.7 mm RMS) used for object heights, fingertip clearance (3 mm) and MoveIt's collision table. |
 | Process management | `cell start sim\|real` / `cell stop`: one process group, clean starts and stops. |
 | Documentation | This site, `http://192.168.1.171:8080`, with live status. |
+| Control page | `http://192.168.1.171:8081` (qb-arm-control.service): start / stop the cell, arm state, claw live data and charts, detection with a typed prompt, boundaries editor, log. |
 | Claw hardware + firmware | Mounted on the arm (20 mm plate, −45°), calibrated, micro-ROS over **qBArm's own access point** `qbarm-claw` (0 % loss, ~4 ms), OTA updates, servo heat guard. |
 | Grip | Closes to 1.2 rad (past pads-touching) and waits until the fingers stop; the servo pushes with the remaining error, limited by the firmware's stall guard. **No reliable "object held" signal yet**: servo position reads ~1.01 rad both empty and on a tape wall → INA219 current sensor ordered. |
 | Place (set an object down) | Working on the real arm: at a point, on / into / next to a detected object → above the spot, straight down to the height at which it was grasped above the surface (+3 mm), open, straight up. Tape roll placed 2 mm / 12 mm from the target; tape roll and screwdriver placed into a bin. Height is computed, not felt (no current sensing yet). |

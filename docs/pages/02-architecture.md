@@ -36,6 +36,7 @@ flowchart LR
         MRA["micro-ROS agent<br/>UDP 8888 (systemd)"]
         CELL["the cell (cell start real)<br/>drivers, MoveIt, RViz, perception, pick"]
         DOC["docs server<br/>TCP 8080 (systemd)"]
+        CTL["control center<br/>TCP 8081 (systemd)"]
         AP["qbarm-claw access point<br/>USB Wi-Fi (Archer T4U), 10.42.0.1"]
     end
     subgraph gpu["hbh-ai - Pop!_OS, RTX 3060 - 192.168.1.220"]

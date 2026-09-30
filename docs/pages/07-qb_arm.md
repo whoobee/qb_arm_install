@@ -218,13 +218,31 @@ keep-out zone of `config/boundaries.yaml` (red, translucent in RViz); waits up t
 after start-up move_group can take longer than 10 s — the table was once silently missing). Then it checks the arm's
 current state against the zones (an arm already inside one makes every plan fail: logged as an error) and exits.
 
-### `boundary_editor`
+### `control_center` — the control page (port 8081)
 
-`ros2 run qb_arm boundary_editor [--port 8081] [--file ...]`: a web page to draw the vision and no-go zones on a top
-view of the table (the colour image warped onto the table plane, 2.5 mm per pixel, x up / y left), validate them with
-`boundaries.load`, preview them in the camera view (`image_outside` + `draw` on a fresh snapshot), save them (backup
-of the old file) and optionally restart the cell. Stdlib HTTP server + rclpy (snapshots on request); the page is
-`web/boundary_editor.html`, no external libraries. See [operations](12-operations.md#boundaries-where-the-camera-looks-where-the-arm-may-never-go).
+`qb-arm-control.service` (installed by qb_arm_install, `--no-control` to skip) runs
+`scripts/control_center` permanently, independent of the cell: **http://192.168.1.171:8081**. Stdlib HTTP server +
+an rclpy node (`control_center`); pages in `web/control_center.html` (tabs) and `web/boundary_editor.html` (the
+Boundaries tab, in a frame), no external libraries.
+
+| Tab | What | ROS / system side |
+|---|---|---|
+| Cell | status, **Start real / Start sim / Stop** (with a confirmation), arm state / mode / error / TCP, reachability of arm, claw and GPU server, the services | `cell` script; `/ufactory/robot_states`; `ping`; `systemctl is-active` |
+| Claw | live servo current, angle, servo and ESP32 temperature, supply voltage, Wi-Fi signal; charts (30 s, temperatures 5 min); **Open / Half / Close / Limp** | `/claw/*` topics; `/claw/command` (clamped to 0..0.96 rad: no squeezing), `/claw/torque` |
+| Camera | a text box for the prompt + **Detect**, the detection image (objects, grasps, boundaries), the objects with their ids; a plain camera frame | `/qb_arm_vision/detect`, `/qb_arm_vision/debug_image`, `/qb_arm_vision/objects`, `/kinect/rgb/image_raw` |
+| Boundaries | vision / no-go zones on a top view of the table (below) | `config/boundaries.yaml` |
+| Log | the last 250 lines of `~/.ros/log/qb_arm_cell.log`, live | |
+
+It never sends the arm anywhere; it moves the claw only from its Claw tab. The service passes the desktop session
+(`WAYLAND_DISPLAY`, `DISPLAY`, `XDG_RUNTIME_DIR`) to the cell it starts, so RViz opens on qBArm's screen, and uses
+`KillMode=process` with the server as the main process (`exec python3 …`, not `ros2 run`, a wrapper that stayed
+behind holding the port): restarting the control center never stops a running cell. No login — it is meant for the
+local network only.
+
+**Boundaries tab**: a top view of the table (the colour image warped onto the table plane, 2.5 mm per pixel, x up /
+y left), vision zones (free quadrilaterals) and no-go zones (boxes: move, resize, heights, turn, name), checked
+live with `boundaries.load`, previewed in the camera view (`image_outside` + `draw` on a fresh snapshot), saved with
+a backup of the old file, optionally with a cell restart.
 
 ### `show_boundaries`
 
