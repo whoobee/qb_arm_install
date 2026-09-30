@@ -124,6 +124,13 @@ bool success
 string message
 Object[] objects
 
+# srv/Place.srv
+geometry_msgs/Point position   # object centre on the table (x, y; z ignored); (0, 0) = back where it was picked
+bool plan_only
+---
+bool success
+string message
+
 # srv/Pick.srv
 string object_id     # from the latest detection
 bool plan_only       # only plan (shown in RViz), don't move

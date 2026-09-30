@@ -40,7 +40,9 @@ ros2 service call /qb_arm_vision/detect qb_arm_vision_interfaces/srv/Detect "{pr
 ros2 service call /qb_arm_vision/pick qb_arm_vision_interfaces/srv/Pick "{object_id: obj_1, plan_only: true}"
 # execute
 ros2 service call /qb_arm_vision/pick qb_arm_vision_interfaces/srv/Pick "{object_id: obj_1}"
-# open the claw and drop the object
+# set it down at a point on the table ((0, 0) = back where it was picked)
+ros2 service call /qb_arm_vision/place qb_arm_vision_interfaces/srv/Place "{position: {x: 0.25, y: 0.10}}"
+# or open the claw and drop it where it is
 ros2 service call /qb_arm_vision/release std_srvs/srv/Trigger
 ```
 

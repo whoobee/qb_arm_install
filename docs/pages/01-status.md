@@ -6,7 +6,7 @@
 
 **The cell picks real objects end to end on the real hardware.** You name an object; the ceiling camera finds it, the
 cell computes a grasp for the claw, MoveIt plans the motion, the Lite6 executes it, the claw closes and the arm lifts
-the object; `release` opens the claw again. Picked so far: a **tape roll** lying flat (gripped across its rim) and a
+the object; `place` sets it down at a given point on the table (or `release` just opens the claw). Picked so far: a **tape roll** lying flat (gripped across its rim) and a
 pair of **pliers** only ~7 mm high (gripped across the jaws). Every link of the chain has run on the real arm:
 
 ```mermaid
@@ -18,7 +18,7 @@ flowchart LR
     E --> F["Arm execution"]:::done
     F --> G["Claw grip"]:::partial
     G --> H["Lift / release"]:::done
-    H --> I["Place (set down)"]:::todo
+    H --> I["Place (set down)"]:::done
     classDef done fill:#d8efe0,stroke:#2e7d4f,color:#123
     classDef partial fill:#fbeccb,stroke:#9a6b00,color:#321
     classDef todo fill:#eee,stroke:#999,color:#444,stroke-dasharray: 4 3
@@ -37,7 +37,7 @@ flowchart LR
 | Documentation | This site, `http://192.168.1.171:8080`, with live status. |
 | Claw hardware + firmware | Mounted on the arm (20 mm plate, −45°), calibrated, micro-ROS over **qBArm's own access point** `qbarm-claw` (0 % loss, ~4 ms), OTA updates, servo heat guard. |
 | Grip | Closes to 1.2 rad (past pads-touching) and waits until the fingers stop; the servo pushes with the remaining error, limited by the firmware's stall guard. **No reliable "object held" signal yet**: servo position reads ~1.01 rad both empty and on a tape wall → INA219 current sensor ordered. |
-| Place (set an object down) | **Not implemented**: `release` just opens the claw where it is. |
+| Place (set an object down) | Working on the real arm: `/qb_arm_vision/place {x, y}` → above the spot, straight down to the height at which it was grasped above the table (+3 mm), open, straight up. Tape roll placed 2 mm / 12 mm from the target. Height is computed, not felt (no current sensing yet). |
 
 ## What is open
 
@@ -49,8 +49,8 @@ In rough order of priority:
    both empty and on a tape wall.
 2. **Claw drive train.** Check for slip between servo horn and gear (the servo turns ~0.2 rad more than the fingers
    move). Rubber pads on the fingers would add friction on smooth objects.
-3. **Place.** Set an object down instead of dropping it: move above a target, lower until the object touches, open,
-   retract.
+3. **Place, next steps.** Place relative to other objects ("on", "next to", "into" a detected object), check that the
+   target spot is free before moving, and — with the INA219 — lower until contact instead of to a computed height.
 4. **A named "ready" pose** for the real arm in MoveIt (the all-zero "home" pose puts the claw into the robot base).
 5. **Better grasp points on long objects.** The pliers hung by their jaws; rank narrow-slice grasps by the centre of
    mass (the joint) instead of the middle of the outline.
@@ -79,6 +79,7 @@ In rough order of priority:
 | 2026-09-29 | Grip rework (close past closed, stop detection, heat guard); claw moved to qBArm's own access point `qbarm-claw`; INA219 support in the firmware. |
 | 2026-09-29 | Table measured as a plane (tilted 0.87°); narrow-slice grasps; parameter-file fix; **first flat object picked (pliers)**. |
 | 2026-09-29 | Automatic servo mode before every pick (UFACTORY's service driver in the cell). |
+| 2026-09-30 | **Place**: tape roll picked 40 cm out and set down at (0.25, 0.10) on the real arm. |
 | 2026-09-29 | First real picks: two crashes (see below), both fixed; `cell` script; **first successful real pick**. |
 
 ## Lessons learned (incidents and their fixes)

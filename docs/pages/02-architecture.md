@@ -127,7 +127,7 @@ flowchart TB
 | `obstacle_cloud` | qb_arm | Depth → workspace-cropped, voxel-thinned cloud for MoveIt's octomap (only with `obstacles:=true`) |
 | `planning_scene_setup` | qb_arm | Adds the table as a collision box, then exits |
 | `object_detector` | qb_arm_vision | Service `/qb_arm_vision/detect`: snapshot → GPU server → objects + grasps → planning scene, markers, debug image |
-| `pick_executor` | qb_arm_vision | Services `/qb_arm_vision/pick`, `/qb_arm_vision/release`: grasp → MoveIt plans → execution → claw |
+| `pick_executor` | qb_arm_vision | Services `/qb_arm_vision/pick`, `/place`, `/release`: grasp → MoveIt plans → execution → claw; sets the held object down |
 | ESP32 firmware | qb_arm_gripper | Node `/claw/qbag_esp32`: `/claw/command`, `/claw/torque` → servo; publishes `/claw/joint_states`, voltage, temperature |
 | `claw_driver` | qb_arm | Sim only: a simulated claw with the same topics (or `claw_relay` for sim arm + real claw) |
 | `sim_ready_pose` | qb_arm | Sim only: moves the fake arm off the all-zero pose (claw inside the base) |
@@ -155,6 +155,7 @@ Interfaces between the components (real arm). `→` publishes/calls.
 | `/qb_arm_vision/objects` | topic (latched) | `ObjectArray` | object_detector → pick_executor |
 | `/qb_arm_vision/markers`, `/qb_arm_vision/debug_image` | topic (latched) | `MarkerArray`, `Image` | object_detector → RViz |
 | `/qb_arm_vision/pick` | service | `qb_arm_vision_interfaces/Pick` | you → pick_executor |
+| `/qb_arm_vision/place` | service | `qb_arm_vision_interfaces/Place` | you → pick_executor |
 | `/qb_arm_vision/release` | service | `std_srvs/Trigger` | you → pick_executor |
 | `/compute_ik`, `/compute_cartesian_path`, `/get_planning_scene`, `/apply_planning_scene` | services | MoveIt | pick_executor, object_detector → move_group |
 | `/move_action`, `/execute_trajectory` | actions | MoveIt | pick_executor → move_group |
