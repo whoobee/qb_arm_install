@@ -124,7 +124,7 @@ flowchart TB
 | `rviz2` | ROS | Visualisation and interactive planning; **closing it stops the whole cell** (xArm launch behaviour) |
 | Kinect driver | qb_arm_kinectdk_ros2 | Camera images, depth, point cloud, IMU, camera model (namespace `/kinect`) |
 | `world_to_camera_base` | qb_arm | Static TF: where the camera hangs, from `config/camera_pose.yaml` |
-| `obstacle_cloud` | qb_arm | Depth → workspace-cropped, voxel-thinned cloud for MoveIt's octomap (only with `obstacles:=true`) |
+| `obstacle_cloud` | qb_arm | Depth → workspace-cropped, voxel-thinned cloud for MoveIt's octomap, the known objects left out (on by default; `obstacles:=false` turns it off) |
 | `planning_scene_setup` | qb_arm | Adds the table and the keep-out zones (`config/boundaries.yaml`) as collision boxes, checks the arm is clear of them, then exits |
 | `object_detector` | qb_arm_vision | Service `/qb_arm_vision/detect`: snapshot → GPU server → objects + grasps → planning scene, markers, debug image. Service `/qb_arm_vision/surface_map`: height map of a region from 7 fresh depth frames, robot cut out |
 | `pick_executor` | qb_arm_vision | Services `/qb_arm_vision/pick`, `/place`, `/release`: grasp → MoveIt plans → execution → claw; sets the held object down after checking the spot in a height map |
@@ -179,6 +179,8 @@ Interfaces between the components (real arm). `→` publishes/calls.
 | `/kinect/rgb/image_raw`, `/kinect/depth_to_rgb/image_raw`, `/kinect/rgb/camera_info` | topic | `sensor_msgs/Image`, `CameraInfo` | Kinect driver → object_detector (only during a snapshot / surface map) |
 | `/kinect/depth/image_raw` | topic | `sensor_msgs/Image` | Kinect driver → obstacle_cloud |
 | `/kinect/obstacle_points` | topic | `sensor_msgs/PointCloud2` | obstacle_cloud → move_group (octomap) |
+| `/qb_arm_vision/scene_objects` | topic (latched) | `ObjectArray` | pick_executor → obstacle_cloud (the known objects, left out of the octomap) |
+| `/clear_octomap` | service | `std_srvs/Empty` | pick_executor → move_group (before every pick and place) |
 | `/qb_arm_vision/detect` | service | `qb_arm_vision_interfaces/Detect` | you → object_detector |
 | `/qb_arm_vision/objects` | topic (latched) | `ObjectArray` | object_detector → pick_executor |
 | `/qb_arm_vision/markers`, `/qb_arm_vision/debug_image` | topic (latched) | `MarkerArray`, `Image` | object_detector → RViz |
@@ -246,7 +248,7 @@ flowchart LR
     cellL --> srp["sim_ready_pose (sim)"]
     bring --> lm["lite6_moveit.launch.py<br/>URDF/SRDF with the claw,<br/>ros2_control, move_group, RViz"]
     bring --> kin["kinect.launch.py<br/>driver + camera TF"]
-    bring --> occ["obstacle_cloud (obstacles:=true)"]
+    bring --> occ["obstacle_cloud (obstacles, default on)"]
     bring --> pss["planning_scene_setup"]
 ```
 

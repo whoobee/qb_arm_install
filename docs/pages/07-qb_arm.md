@@ -33,7 +33,7 @@ classDiagram
     }
     class cell_launch["cell.launch.py"] {
         sim, claw_hw, camera=true
-        obstacles=false, vision=true
+        obstacles=true, vision=true
         robot_ip=192.168.1.23
         +sim_ready_pose (sim)
     }
@@ -184,12 +184,22 @@ octomap, at 5 Hz:
 2. Per depth frame: depth (mm → m) × ray = 3D point in the depth camera frame; keep 0.25–3.0 m.
 3. Flying-pixel filter: drop pixels whose valid 3x3 neighbours span more than `edge_threshold` (5 cm).
 4. Transform to `world`; keep points with `0.03 < z < 1.0` m (drops the table) within 0.8 m of the base.
-5. **Voxel thinning**: one point per 1 cm voxel (key = 3 × 21-bit voxel indices packed into one int64, `np.unique`).
-6. Publish in the **depth camera frame** (MoveIt uses the cloud's frame origin as the sensor position to clear free
+5. **Known objects left out**: points inside the outline (+2 cm, `object_margin`) of every object the pick executor
+   knows (`/qb_arm_vision/scene_objects`: the last detection, with objects moved by a place, minus forgotten ones) are
+   dropped. MoveIt has those as exact collision objects, and the claw must be allowed to touch the one it picks — in
+   the octomap it would be an obstacle like any other (why the octomap used to be off). Everything else stays: a
+   bottle nobody asked about, cables, a hand.
+6. **Voxel thinning**: one point per 1 cm voxel (key = 3 × 21-bit voxel indices packed into one int64, `np.unique`).
+7. Publish in the **depth camera frame** (MoveIt uses the cloud's frame origin as the sensor position to clear free
    space along the rays).
 
 MoveIt side (`config/sensors_3d.yaml`): `PointCloudOctomapUpdater`, 2 cm octomap in `world`, max range 3 m, robot
-self-filter padding 5 cm (points this close to the robot are not obstacles).
+self-filter padding 5 cm (points this close to the robot are not obstacles; the object in the claw is filtered
+too). **On by default in the cell** since 2026-09-30, after the arm hit a water bottle nobody had detected. Before
+every pick and place the executor clears the octomap and waits `octomap_settle` (1.2 s) for the camera to refill it:
+voxels of an object that is now known (and left out of the cloud) would otherwise stay, since the camera can't clear
+them through the object. Limits: things lower than 3 cm are not obstacles (the table cut), what the arm itself hides
+at that moment is unknown and MoveIt treats unknown as free.
 
 ### `planning_scene_setup`
 

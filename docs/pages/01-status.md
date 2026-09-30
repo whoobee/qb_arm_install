@@ -29,7 +29,7 @@ flowchart LR
 |---|---|
 | Lite6 + MoveIt (real and simulated) | Working. Launched as one unit with `cell start real` / `cell start sim`. |
 | Ceiling Kinect + extrinsic calibration | Working. Camera pose from IMU tilt + ICP against the robot meshes, 4 mm RMS. |
-| Obstacle avoidance (octomap) | Built and tested in sim, **off by default** in the cell (it also sees the object to pick). |
+| Obstacle avoidance (octomap) | **On by default** (2026-09-30, after the arm hit an undetected water bottle): the camera's point cloud minus the robot and the known objects → MoveIt's octomap; refreshed before every pick and place. Tested on the real cell (plan only): a pose 1 cm above the bottle refused, beside it accepted; picks of known objects still plan. |
 | Detection / segmentation / grasps (GPU server) | Working, ~3.7 s per request (Contact-GraspNet ~2.5 s of it). |
 | Grasp logic for the claw | Working: CGN grasps + ring (rim) grasps + narrow-slice grasps for flat/long objects + top-slice fallback, finger-landing check, closing-claw geometry, heights above the measured table plane. Picked: tape roll (rim), pliers (7 mm high, across the jaws). |
 | Pick executor | Working on the real arm: servo-mode check → pre-grasp → straight approach → close until the fingers stop → attach → lift; release. Puts the arm back into servo mode itself before every pick (arm errors are left to a person). |
@@ -86,7 +86,8 @@ In rough order of priority:
 | 2026-09-30 | **Place**: tape roll picked 40 cm out and set down at (0.25, 0.10) on the real arm. |
 | 2026-09-30 | **Relative placement** (on / into / next_to), two review rounds; tape roll placed **into a bin**; sim claw separated from the real claw. |
 | 2026-09-30 | Object ids from the query (`white_bin`, `tape_1`). **Place check**: height map service, free-spot check, container fill (emptiest spot first). |
-| 2026-09-30 | **Soft boundaries**: vision workspace + keep-out zones for the work desk, `show_boundaries`. |
+| 2026-09-30 | **Soft boundaries**: vision workspace + keep-out zones for the work desk, `show_boundaries`, the zone editor. |
+| 2026-09-30 | **Obstacle avoidance on** in the cell: known objects left out of the octomap, octomap refreshed before every pick and place. |
 | 2026-09-29 | First real picks: two crashes (see below), both fixed; `cell` script; **first successful real pick**. |
 
 ## Lessons learned (incidents and their fixes)

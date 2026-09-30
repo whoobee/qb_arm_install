@@ -225,7 +225,10 @@ the **held object's outline**, the **band the open fingers sweep** (±43 mm alon
 - **"back where it was picked"** is not checked: the object hangs above that spot and hides it, and it was just
   picked from there.
 
-Before any pick or place, the executor also checks that MoveIt's scene has the table and every keep-out zone of
+Before any pick or place the executor clears MoveIt's octomap and lets the camera refill it (1.2 s, so objects that
+are known now or have moved leave no ghost voxels), lets the detected objects touch the fixed robot base (`link_base`:
+a bin outline reaching the base otherwise made every arm pose a collision), and checks that MoveIt's scene has the
+table and every keep-out zone of
 `boundaries.yaml` (*"MoveIt's planning scene lacks keepout_desk ...: not moving"*), plans picks with the claw
 **open** (it opens before moving, whatever it was before), checks that the claw can open where the arm is (pick
 start, `release`), and straight-line paths are cut at a joint jump of more than 0.5 rad between two 5 mm steps

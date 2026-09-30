@@ -22,7 +22,7 @@ Always through `cell` — it starts everything as one process group and stops al
 cell status                 # anything running? leftovers?
 cell start real             # real arm + real claw + camera + MoveIt + RViz + vision
 cell start sim              # simulated arm and claw (camera is real)
-cell start real obstacles:=true   # extra launch arguments pass through
+cell start real obstacles:=false  # extra launch arguments pass through (here: no camera octomap)
 cell log                    # follow the output
 cell stop                   # stop everything (waits until it is gone)
 cell stop --force           # also kill leftovers from runs not started with cell
@@ -153,4 +153,4 @@ cd ~/prj/qb_arm_gripper && pio run -e gripper_ota -t upload
 | Claw doesn't move, but answers | servo supply off (voltage ~3.3 V instead of ~7.3 V) |
 | Detection fails / slow | GPU server: `curl http://hbh-ai.local:8770/health`; on hbh-ai `docker compose logs -f` |
 | `Overrun detected!` in the log | controller loop timing under CPU load (no real-time kernel); harmless unless constant |
-| move_group crashed during octomap use | known MoveIt race (planning scene request with the octomap component reads it without a lock); obstacles are off by default |
+| move_group crashed during octomap use | known MoveIt race (planning scene request with the octomap component reads it without a lock); never request the `OCTOMAP` component of `/get_planning_scene` in own code |
