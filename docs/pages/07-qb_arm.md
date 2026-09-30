@@ -229,11 +229,12 @@ Boundaries tab, in a frame), no external libraries.
 |---|---|---|
 | Cell | status, **Start real / Start sim / Stop** (with a confirmation), arm state / mode / error / TCP, reachability of arm, claw and GPU server, the services | `cell` script; `/ufactory/robot_states`; `ping`; `systemctl is-active` |
 | Claw | live servo current, angle, servo and ESP32 temperature, supply voltage, Wi-Fi signal; charts (30 s, temperatures 5 min); **Open / Half / Close / Limp** | `/claw/*` topics; `/claw/command` (clamped to 0..0.96 rad: no squeezing), `/claw/torque` |
-| Camera | a text box for the prompt + **Detect**, the detection image (objects, grasps, boundaries), the objects with their ids; a plain camera frame | `/qb_arm_vision/detect`, `/qb_arm_vision/debug_image`, `/qb_arm_vision/objects`, `/kinect/rgb/image_raw` |
+| Control | a text box for the prompt + **Detect**, the detection image (objects, grasps, boundaries), the objects with their ids, a plain camera frame; **pick** an object and **place** it at a point, on / into / next to (a side) another one or back where it was picked, **release** — objects chosen in the list or by clicking them in the image, the place point by clicking the table in the image (the pixel's ray meets the measured table plane); **Plan** (shown in RViz) or execute after a confirmation | `/qb_arm_vision/detect`, `/qb_arm_vision/pick`, `/place`, `/release`, `/qb_arm_vision/debug_image`, `/qb_arm_vision/objects`, `/kinect/rgb/camera_info`, `/kinect/rgb/image_raw` |
 | Boundaries | vision / no-go zones on a top view of the table (below) | `config/boundaries.yaml` |
 | Log | the last 250 lines of `~/.ros/log/qb_arm_cell.log`, live | |
 
-It never sends the arm anywhere; it moves the claw only from its Claw tab. The service passes the desktop session
+The arm moves only through the pick executor, when a pick or place is executed from the Control tab (after a
+confirmation); the claw moves from the Claw tab. The service passes the desktop session
 (`WAYLAND_DISPLAY`, `DISPLAY`, `XDG_RUNTIME_DIR`) to the cell it starts, so RViz opens on qBArm's screen, and uses
 `KillMode=process` with the server as the main process (`exec python3 …`, not `ros2 run`, a wrapper that stayed
 behind holding the port): restarting the control center never stops a running cell. No login — it is meant for the
