@@ -170,7 +170,11 @@ float64 origin_x          # cell (ix, iy) centred at origin + (i + 0.5) * resolu
 float64 origin_y
 float32 resolution
 float32[] heights         # m, world z per cell (75th percentile of its points); NaN = not seen
-uint8[] robot             # 1 = points on the robot or the held object fell into the cell
+uint8[] flags             # per cell: ROBOT (1) = points on the robot or the held object fell into it,
+                          # IGNORED (2) = outside the vision workspace or in a keep-out zone,
+                          # VEIL (4) = just behind a taller edge (mixed depth: not seen)
+float32[] hidden_top      # per unseen cell: how high something could stand there unseen (line of sight over the
+                          # occluder, arm included; inf = unknown); NaN for seen cells
 
 # srv/Pick.srv
 string object_id     # from the latest detection
@@ -226,6 +230,7 @@ can't disagree. Values from `qb_arm/urdf/qbag.xacro`: the crank vector from the 
 | `max_view_slope_deg` | 60 | steeper surfaces (against the view) are left out of the map |
 | `edge_jump`, `edge_veil` | 0.03 m, 0.04 m | cells just behind an edge this much higher (within its shadow + `edge_veil`) are not seen |
 | `robot_mask_margin` | 0.03 m | around each link's collision box when cutting the robot out of the map |
+| `boundaries_file` | qb_arm `config/boundaries.yaml` (launch argument) | the vision workspace and keep-out zones; `''` = none |
 
 `pick_executor` parameters: see [pick execution](06-pick-execution.md#parameters).
 

@@ -60,6 +60,21 @@ container, full there — or *"under the arm"*: the camera can't see below the a
 it can't be checked (place elsewhere, or move the arm away first).
 `ros2 param set /qb_arm_vision/pick_executor check_place false` turns the check off for the next places.
 
+## Boundaries: where the camera looks, where the arm may never go
+
+`~/prj/ros2_ws/src/qb_arm/config/boundaries.yaml`: the **vision workspace** (a polygon on the table; the detector
+ignores everything outside it) and the **keep-out zones** (boxes MoveIt never lets the arm enter, e.g. the desk).
+After editing: `cell stop`, `cell start real` (no build). A broken file stops the cell with the reason in the log
+(`cell log`); another file: `cell start real boundaries_file:=/path/file.yaml`. Check:
+
+```bash
+ros2 run qb_arm show_boundaries --output ~/boundaries.png   # green workspace, red keep-out, dark = ignored
+```
+
+In RViz the keep-out zones are red boxes in the planning scene, the workspace a green outline (Markers display). On
+start-up `planning_scene_setup` logs each zone and whether the arm is clear of them; if the arm is inside one, every
+plan fails until it is moved out by hand.
+
 ## The claw by hand
 
 ```bash

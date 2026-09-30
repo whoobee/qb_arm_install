@@ -19,6 +19,7 @@
 | **Extrinsics** | Pose of the camera relative to the robot (`world → camera_base`) |
 | **Finger drop** | How much further along the approach the claw's fingers are when closed than when open (up to 18.8 mm) |
 | **Flying pixels** | Depth pixels on object edges that mix foreground and background and float in between |
+| **Vision workspace** | The polygon (and z range) in `config/boundaries.yaml` the camera looks at; everything else is blacked out before detection |
 | **Veil (mixed-pixel ramp)** | Flying pixels behind a tall edge seen from the camera: a gradual ramp (10–25 mm beside a 10 cm bin rim) that no per-pixel filter separates from a real object; those cells count as not seen |
 | **FK / IK** | Forward kinematics (joints → pose) / inverse kinematics (pose → joints) |
 | **Grasp** | Pose of the TCP + width at which the gripper closes on an object |
@@ -31,6 +32,7 @@
 | **ICP** | Iterative Closest Point: aligns a point cloud to a model by repeatedly matching nearest points |
 | **Intrinsics (K)** | Camera focal lengths and principal point (fx, fy, cx, cy) |
 | **KDL** | The numerical IK solver used for the Lite6 |
+| **Keep-out zone** | A box in `config/boundaries.yaml` the arm may never enter: a MoveIt collision object `keepout_<name>` |
 | **`link_tcp`** | The claw's tool centre point: between the open pads, z along the fingers, y closing |
 | **LX protocol** | Hiwonder bus-servo serial protocol (`0x55 0x55`, id, length, command, params, checksum) |
 | **micro-ROS** | ROS 2 for microcontrollers |

@@ -125,7 +125,7 @@ flowchart TB
 | Kinect driver | qb_arm_kinectdk_ros2 | Camera images, depth, point cloud, IMU, camera model (namespace `/kinect`) |
 | `world_to_camera_base` | qb_arm | Static TF: where the camera hangs, from `config/camera_pose.yaml` |
 | `obstacle_cloud` | qb_arm | Depth → workspace-cropped, voxel-thinned cloud for MoveIt's octomap (only with `obstacles:=true`) |
-| `planning_scene_setup` | qb_arm | Adds the table as a collision box, then exits |
+| `planning_scene_setup` | qb_arm | Adds the table and the keep-out zones (`config/boundaries.yaml`) as collision boxes, checks the arm is clear of them, then exits |
 | `object_detector` | qb_arm_vision | Service `/qb_arm_vision/detect`: snapshot → GPU server → objects + grasps → planning scene, markers, debug image. Service `/qb_arm_vision/surface_map`: height map of a region from 7 fresh depth frames, robot cut out |
 | `pick_executor` | qb_arm_vision | Services `/qb_arm_vision/pick`, `/place`, `/release`: grasp → MoveIt plans → execution → claw; sets the held object down after checking the spot in a height map |
 | ESP32 firmware | qb_arm_gripper | Node `/claw/qbag_esp32`: `/claw/command`, `/claw/torque` → servo; publishes `/claw/joint_states`, voltage, temperature |
@@ -133,6 +133,34 @@ flowchart TB
 | `sim_ready_pose` | qb_arm | Sim only: moves the fake arm off the all-zero pose (claw inside the base) |
 | `ufactory_driver` (`/uf_api`) | xarm_ros2 (`xarm_api`) | Real arm only: UFACTORY's service driver (second connection to the controller); the pick executor uses `set_mode`/`set_state`/`motion_enable` to restore servo mode |
 | GPU server | qb_arm_vision/server | `POST /pipeline`: Grounding DINO, SAM 2, Contact-GraspNet |
+
+## Soft boundaries
+
+The robot shares the room with a work desk (liftable, with a PC). Two separate, configurable limits keep the cell away
+from it, both in `qb_arm/config/boundaries.yaml` (world frame):
+
+```mermaid
+flowchart LR
+    CFG["config/boundaries.yaml"] --> VW["vision_workspace<br/>polygon + z range"]
+    CFG --> KO["keep_out<br/>boxes"]
+    VW --> OD["object_detector:<br/>pixels outside blacked out<br/>(colour + depth) before detection"]
+    KO --> OD
+    OD --> NOOBJ["no objects found outside,<br/>no place spots outside"]
+    KO --> PSS["planning_scene_setup:<br/>collision boxes keepout_name"]
+    PSS --> MG["move_group: every plan and<br/>straight-line path avoids them"]
+```
+
+| | Vision workspace | Keep-out zones |
+|---|---|---|
+| Purpose | where the camera looks for objects | where the arm may never go |
+| Shape | polygon on the table (any simple polygon) + z range | boxes (corners, or centre + size + yaw) |
+| Enforced by | object_detector (image and depth masked before the GPU server; detections and height-map cells outside dropped) | MoveIt collision objects: OMPL plans, Cartesian paths, IK, RViz |
+| Also affects | place spots outside it are refused ("outside the vision workspace") | the camera ignores them too |
+| Visualised | green outline (RViz markers, debug image, `show_boundaries`) | red boxes (RViz scene + markers, debug image, `show_boundaries`) |
+
+They differ on purpose: the camera may look at less than the arm may reach (a shelf it shouldn't pick from), and the
+keep-out zones cover the desk at any height it can be lifted to (a box from the floor to above the arm's reach).
+The zones are a **planning** limit: the Lite6 controller doesn't know them (see [qb_arm](07-qb_arm.md#soft-boundaries)).
 
 ## The ROS graph
 

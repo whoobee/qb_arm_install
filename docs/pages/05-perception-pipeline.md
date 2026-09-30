@@ -48,6 +48,31 @@ It waits until an RGB and a depth frame with the **same timestamp** have arrived
 camera pose `T_world_cam` (world ← `rgb_camera_link`) from TF. Because the depth is registered to the colour
 image, pixel (u, v) in the mask and pixel (u, v) in the depth image are the same point in space.
 
+### Step 1b – The boundaries: what the camera may look at
+
+Before anything looks at the images, `qb_arm.boundaries.image_outside` marks the pixels to ignore (the cell's
+[soft boundaries](02-architecture.md#soft-boundaries), `config/boundaries.yaml`), and they are blacked out in the
+colour image and set to "no depth" in the depth image:
+
+1. **Outside the workspace's image region**: the projection of the workspace volume (the polygon from `z_min` to
+   `z_max`: bottom, top and side walls) into the image. A ray through any other pixel can't see into the workspace.
+2. **Depth says outside**: pixels whose 3D point lies outside the polygon, below `z_min`, above `z_max`, or inside a
+   keep-out box.
+3. **Patches without depth** (a black monitor screen, glossy or dark things) are decided by the measured pixels in a
+   3-pixel ring around them: kept only when more of those are kept than ignored (a tie, or no measured neighbour:
+   ignored; no depth at all in the region: every depth-less pixel ignored). The monitor on the desk disappears, a dark
+   tool on the table stays.
+
+Later, every grasp whose claw footprint (open knuckles ±64 mm, palm ±35 mm, + 1 cm) would reach outside the
+workspace or into a keep-out zone is dropped: next to the boundary there may be things the camera was told not to
+look at, so MoveIt doesn't know them either.
+
+So Grounding DINO, SAM 2 and Contact-GraspNet only ever see the workspace (on the real cell: 86 % of the image
+black, only the robot table left). Two more filters catch what slips through: a detection whose mask lies mostly on
+ignored pixels, or whose centre lies outside the polygon, is dropped as *"outside the vision workspace"* (asked for
+"monitor", Grounding DINO once picked the most monitor-like dark fragment at the edge). The debug image shows the
+ignored pixels dark, the workspace green and the keep-out zones red.
+
 ## Step 2 – GPU server: detection, segmentation, grasps
 
 The ROS node sends the snapshot as a multipart HTTP request: the colour image as JPEG (quality 92), the depth as a

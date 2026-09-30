@@ -202,20 +202,34 @@ For each candidate spot (and each of its two turns) the executor lays three foot
 the **held object's outline**, the **band the open fingers sweep** (±43 mm along the closing axis, 16 mm wide) and the
 **claw body** (knuckles and cranks ±64 mm, palm ±35 mm, from 28 mm above the TCP):
 
-- **Outside the map / under the arm**: the footprints must lie completely inside the map, and must not touch a cell
-  where points of the robot or of the held object fell — what is below or right beside the arm can't be seen, and
-  cutting the robot out would also cut out an obstacle touching it: *"under the arm or the object in the claw, where
-  the camera cannot check it"*.
+- **Outside the boundaries**: no footprint may touch a cell outside the vision workspace or in a keep-out zone
+  (*"outside the vision workspace or in a keep-out zone"*) — the camera doesn't look there.
+- **Outside the map**: the footprints must lie completely inside the map (*"partly outside the checked region"*).
 - **Occupied**: a seen cell is higher than what will be above it — the object's bottom under the object, the fingertips
   under the fingers, the claw body under the body — and at least 8 mm (`free_tolerance`) above the surface. Two such
   cells (`min_blocked_cells`) make the spot occupied: *"something 23 mm high at (0.215, 0.005) under the open fingers"*.
-- **Not seen**: more than 40 % (`max_hidden`) of those cells have no reliable depth — hidden behind something or out
-  of the camera's view: *"70 % of it not seen by the camera"*. The robot does not put things where it can't see that
-  the spot is free. (Into a container, its own inside doesn't count here: its walls hide it by construction.)
+- **Could something be hidden there?** For every cell it can't see, the detector says how high something could stand
+  there unseen (`hidden_top`): in the shadow of something taller — a bin, the arm itself — it is the line of sight over
+  that occluder; where nothing explains the gap (no depth return from a dark or glossy surface, out of view, right under
+  the arm) it is unknown. Only unseen cells where something hidden could reach what comes down there matter:
+  - in a shadow, **two such cells** refuse the spot: *"something up to 220 mm high could hide behind a taller object or
+    the arm at (0.285, 0.062)"*;
+  - unknown ones and mixed-pixel veils are tolerated up to 40 % (`max_hidden`) **of each part** — the object's
+    footprint, the fingers' band, the claw body — so a small object can't slip onto an unseen patch because the large
+    claw body is well seen: *"70 % of the area under the object not seen by the camera"*.
+
+  A cup's inside, hidden by its own walls, can hide nothing above the rim, so it never stops an "into" whose object is
+  released above the rim; a tall item in a bin that hides something reaching above the rim does.
 - **"on"**: the object comes to rest on the highest part of the reference's top under it; if the map measures that a
   little higher than the detection did (up to 8 mm), the set-down height follows the map.
 - **"back where it was picked"** is not checked: the object hangs above that spot and hides it, and it was just
   picked from there.
+
+Before any pick or place, the executor also checks that MoveIt's scene has the table and every keep-out zone of
+`boundaries.yaml` (*"MoveIt's planning scene lacks keepout_desk ...: not moving"*), plans picks with the claw
+**open** (it opens before moving, whatever it was before), checks that the claw can open where the arm is (pick
+start, `release`), and straight-line paths are cut at a joint jump of more than 0.5 rad between two 5 mm steps
+(an IK branch switch would sweep the arm through unchecked space).
 
 **Why so much filtering** — measured on the real cell (2026-09-30):
 
@@ -243,8 +257,8 @@ flowchart TB
 - A spot is usable when the object, resting on the contents under it, fits **completely below the rim** (8 mm
   tolerance). An object taller than the container only goes onto an (almost) empty part of the floor.
 - **Cups and deep boxes**: the camera can't see their inside at all (walls). Such spots are still allowed — dropped
-  above the rim as before, if nothing above the rim was seen — but only after every spot whose contents were seen;
-  the reply says *"its contents not seen"*.
+  above the rim — if nothing unseen under the object could reach above the rim, but only after every spot whose
+  contents were seen; the reply says *"its contents not seen"*.
 - The container is "full" **for this object** when no spot is usable: a pen may still fit where a bottle doesn't. The
   reply then lists the spots and why, e.g. *"full there: contents 1.9 cm high leave 7.6 cm below the rim, it needs
   8.7 cm"*.

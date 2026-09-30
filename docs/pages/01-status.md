@@ -39,6 +39,7 @@ flowchart LR
 | Claw hardware + firmware | Mounted on the arm (20 mm plate, −45°), calibrated, micro-ROS over **qBArm's own access point** `qbarm-claw` (0 % loss, ~4 ms), OTA updates, servo heat guard. |
 | Grip | Closes to 1.2 rad (past pads-touching) and waits until the fingers stop; the servo pushes with the remaining error, limited by the firmware's stall guard. **No reliable "object held" signal yet**: servo position reads ~1.01 rad both empty and on a tape wall → INA219 current sensor ordered. |
 | Place (set an object down) | Working on the real arm: at a point, on / into / next to a detected object → above the spot, straight down to the height at which it was grasped above the surface (+3 mm), open, straight up. Tape roll placed 2 mm / 12 mm from the target; tape roll and screwdriver placed into a bin. Height is computed, not felt (no current sensing yet). |
+| Soft boundaries | Built and tested on the real cell (no motion): `config/boundaries.yaml` — vision workspace (the detector blacks out everything else before detection; place spots outside refused) and keep-out zones (MoveIt collision boxes: IK, plans and straight lines refused, checked with a temporary test zone). **The desk/pc zones are a first proposal from the camera image, to be confirmed.** |
 | Place check (height map) | Built and tested against the real camera (plan only): every spot is checked in a fresh height map (7 depth frames, robot cut out) — free under the object and the open fingers, seen by the camera; into a container, room below the rim above the contents, emptiest spot first, fill reported. **Not yet run with a real place motion.** |
 
 ## What is open
@@ -85,6 +86,7 @@ In rough order of priority:
 | 2026-09-30 | **Place**: tape roll picked 40 cm out and set down at (0.25, 0.10) on the real arm. |
 | 2026-09-30 | **Relative placement** (on / into / next_to), two review rounds; tape roll placed **into a bin**; sim claw separated from the real claw. |
 | 2026-09-30 | Object ids from the query (`white_bin`, `tape_1`). **Place check**: height map service, free-spot check, container fill (emptiest spot first). |
+| 2026-09-30 | **Soft boundaries**: vision workspace + keep-out zones for the work desk, `show_boundaries`. |
 | 2026-09-29 | First real picks: two crashes (see below), both fixed; `cell` script; **first successful real pick**. |
 
 ## Lessons learned (incidents and their fixes)
@@ -111,6 +113,7 @@ These are worth reading: each one changed the design.
 | 16 | The screwdriver couldn't go "into" the bin: "no reachable way down" | Gripped at its centre, the claw had to go above the bin's centre, 44 cm from the base — beyond the reach | "into" tries drop points shifted towards the robot inside the opening while the object still fits |
 | 17 | Sim tests opened and closed the real claw (and heated it) | The real claw's ESP32 is always connected and listens on `/claw/command`; the simulated claw used the same topic | Simulated claw in `/sim_claw`; the pick executor's command topic follows `claw_hw` |
 | 18 | The first height maps showed the parked arm as 41–56 cm obstacles, a 10–25 mm "object" beside the bin, and random 10 mm bumps on the empty table | The Lite6's forearm lies up to 10 cm beside the line between its joint frames; mixed depth pixels form a ramp behind a tall edge; one depth frame is noisy (±10 mm) on the dark table | Cut the robot out by its URDF collision boxes; cells just behind a taller edge (seen from the camera) count as not seen; median of 7 depth frames and the 75th percentile per cell |
+| 19 | Reviews of the place check and the boundaries found the checks too coarse in both directions (an unseen bin corner waved through, the arm's whole silhouette refused) and several ways to lose the keep-out zones silently (a typo `keepout:`, a failed scene setup) | Unseen cells were counted, not reasoned about; config errors were tolerated | Per-cell "how high could something hide here", counted per part; strict config validation, the table always added, the cell stops without its zones, the executor checks the zones are in MoveIt's scene before moving |
 
 > **Safety rule born from this:** with the claw mounted, the arm's **all-zero joint pose** (xArm "home",
 > UFACTORY app "go home") puts the claw **into the robot base**. Never send the real arm there.

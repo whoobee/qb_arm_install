@@ -194,8 +194,60 @@ self-filter padding 5 cm (points this close to the robot are not obstacles).
 ### `planning_scene_setup`
 
 Waits for `move_group`, adds `table`: a 2 × 2 × 0.04 m box whose top follows the measured table plane
-(`config/table.yaml`, tilted 0.87°), or level at z = −0.005 without a measurement; waits up to 30 s per attempt, 3
-attempts (right after start-up move_group can take longer than 10 s — the table was once silently missing), exits.
+(`config/table.yaml`, tilted 0.87°), or level at z = −0.005 without a measurement, and one box `keepout_<name>` per
+keep-out zone of `config/boundaries.yaml` (red, translucent in RViz); waits up to 30 s per attempt, 3 attempts (right
+after start-up move_group can take longer than 10 s — the table was once silently missing). Then it checks the arm's
+current state against the zones (an arm already inside one makes every plan fail: logged as an error) and exits.
+
+### `show_boundaries`
+
+`ros2 run qb_arm show_boundaries [--output boundaries.png]`: the live camera image with the vision workspace (green,
+at table height and at `z_max`) and the keep-out zones (red, at table height); everything the detector ignores is
+dark, computed exactly as the detector does (`qb_arm.boundaries.image_outside` on the median of 5 depth frames).
+Read-only.
+
+## Soft boundaries
+
+`config/boundaries.yaml`, loaded by `qb_arm/boundaries.py` (shared with qb_arm_vision's object_detector):
+
+```yaml
+vision_workspace:          # the camera only looks for objects in here
+  polygon: [[-0.50, -0.60], [0.45, -0.60], [0.45, 0.50], [-0.50, 0.50]]   # [x, y] corners, any simple polygon
+  z_min: -0.05             # below: floor, chair
+  z_max: 0.50
+keep_out_margin: 0.03      # MoveIt gets every box this much bigger (it checks the arm at discrete points only)
+keep_out:                  # boxes the arm may never enter (MoveIt collision objects keepout_<name>)
+  - name: desk             # corners, axis-aligned in world ...
+    min: [-1.50, -2.00, -0.90]
+    max: [-0.55,  1.00,  1.30]
+  - name: pc               # ... or center: [x, y, z], size: [x, y, z], yaw_deg: 0
+    min: [-0.55, -2.00, -0.90]
+    max: [ 0.40, -0.70,  1.30]
+```
+
+- **Editing**: change the file, restart the cell. qb_arm is installed with `--symlink-install`, so no build. Check
+  with `show_boundaries`.
+- **Validation is strict**: an unknown key (`keepout:` for `keep_out:`, `yaw:` for `yaw_deg:`), a zone mixing
+  `min`/`max` with `center`/`size`, a non-finite number, a self-crossing or tiny polygon, `z_min ≥ z_max`, a box with
+  `max ≤ min`, a duplicate name, an empty file or a path that doesn't exist all raise an error — never silently
+  ignored. Only `boundaries_file:=''` means "no boundaries".
+- **Fail closed**: `planning_scene_setup` adds the table whatever happens, then exits non-zero if the boundaries file
+  is broken or move_group didn't accept the scene (10 attempts); `bringup.launch.py` then **stops the whole cell**
+  (tested: `cell start real boundaries_file:=<file with keepout:>` stops with the reason). The pick executor also
+  refuses to move while any zone is missing from MoveIt's scene.
+- **One file for everyone**: `cell start real boundaries_file:=/path/other.yaml` reaches `planning_scene_setup`, the
+  detector and the executor alike.
+- **Margin**: MoveIt gets each box `keep_out_margin` (3 cm) bigger on every side, because it only checks the arm at
+  discrete states along a motion; the camera uses the exact box.
+- **Boxes, not meshes**: MoveIt's collision checking treats a primitive box as solid, so a link can't be "inside"
+  it without colliding; a mesh is only a surface.
+- **What the zones do not cover**: they are a planning limit. A trajectory that is already running is not
+  re-checked, and the Lite6 controller doesn't know them; for a hardware limit on the TCP the controller has its own
+  safety boundary (UFACTORY "reduced mode" TCP box).
+- **Measured on the real cell (2026-09-30)**: with a temporary test zone behind the robot, collision-aware IK refused
+  a pose inside it while one 5 cm beside it stayed valid, and a straight line towards it stopped at 38 % (the
+  executor needs 99 %). The desk and pc zones as configured lie at the edge of the arm's reach (link frames reach at
+  most 0.57 m from the base horizontally).
 
 ### Calibration scripts
 
@@ -211,4 +263,5 @@ attempts (right after start-up move_group can take longer than 10 s — the tabl
 | `config/obstacles.yaml` | `obstacle_cloud` (keyed `/**/obstacle_cloud`, it runs in `/kinect`) and `planning_scene_setup` parameters |
 | `config/table.yaml` | measured table plane (`measure_table`), keyed `/**` |
 | `config/sensors_3d.yaml` | MoveIt 3D sensor (octomap) configuration |
+| `config/boundaries.yaml` | the vision workspace and the keep-out zones ([soft boundaries](#soft-boundaries)); plain YAML, not ROS parameters |
 | `rviz/qb_arm.rviz` | RViz layout: MoveIt motion planning (group `lite6`), detections image, markers |
