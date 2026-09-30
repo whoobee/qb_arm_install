@@ -320,6 +320,9 @@ go to the equivalent angle nearest to where they are, so the arm never unwinds a
 
 `/qb_arm_vision/save_home` (control page: **save pose as home**) writes the arm's current pose to `home.yaml`: jog the
 arm to where it should rest (out of the camera's way), then save.
+A save is refused while the arm's joint states aren't in yet (right after a cell start they are all exactly 0) and for
+any pose MoveIt finds in collision; a home pose in collision is reported (*"The home pose … is in collision …: save a
+new one"*) instead of planned.
 
 ## Parameters
 
