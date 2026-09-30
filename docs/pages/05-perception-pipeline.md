@@ -274,7 +274,9 @@ All surviving grasps (network + ring or fallback) are sorted by score; the best 
 
 Ids come from the query (`qb_arm_vision/names.py`): the phrase the detector matched, lower case, words joined by `_`
 (`white bin` → `white_bin`). Several objects with the same name are numbered by distance from the robot base, nearest
-first (`tape_1`, `tape_2`). While the claw holds an object its id is reserved (a second screwdriver becomes
+first (`tape_roll_1`, `tape_roll_2`). The detector's label is first mapped to the prompt phrase it shares the most
+words with: Grounding DINO sometimes returns only part of a phrase (`tape` for `tape roll`) or runs two together, which
+gave one roll the id `tape` and another `tape_roll`. While the claw holds an object its id is reserved (a second screwdriver becomes
 `screwdriver_1`). The services accept the name typed with spaces or capitals (`"white bin"`). Grounding DINO works best
 with descriptive phrases: `bin.` found nothing where `white bin.` scored 0.77.
 
