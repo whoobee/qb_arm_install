@@ -106,6 +106,8 @@ for which steps 3–5 succeed is chosen; with `plan_only` the pick stops here (M
    `empty_margin` of fully closed counts as "nothing grasped": the claw opens and the pick ends without lifting.
    **Off by default**, because the servo reads ~1.01 rad both empty and on a tape wall; it needs the INA219.
 5. **Attach** the object to `link_tcp` (touch links = the claw links). From now on MoveIt carries it with the arm.
+   Its contact with the `table` is allowed while it is held: standing on the tilted table, its level bottom can
+   touch the table box by a fraction of a millimetre, which made the lift and every later plan start "in collision".
 6. **Lift**: straight line 10 cm up from the current TCP pose; at least 2 cm must be possible (edge of the reach).
 
 ### Failure handling
