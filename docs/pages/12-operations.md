@@ -11,7 +11,7 @@ Runbook for daily use: starting and stopping, picking, calibration, recovery, sa
 > 3. **Never power the ESP32 from the buck converter and USB at the same time** (back-feed into the PC's USB port).
 > 4. After a fault or an emergency stop, **a person recovers the arm** (clear the error, move it clear). The software
 >    does not retry.
-> 5. Don't leave the claw squeezing an object for long: the servo heats up while holding (watch `/claw/temperature`;
+> 5. Don't leave the claw squeezing an object for long: the servo heats up while holding (watch `/claw/servo_temperature`;
 >    the firmware derates from 60 °C and goes limp at 70 °C — a held object then drops).
 
 ## Start and stop
@@ -93,7 +93,7 @@ ros2 topic pub -r 1 /claw/command std_msgs/msg/Float64 "{data: 0.0}"    # open (
 ros2 topic pub -r 1 /claw/command std_msgs/msg/Float64 "{data: 0.96}"   # close
 ros2 topic pub -r 1 /claw/torque std_msgs/msg/Bool "{data: false}"      # limp: move it by hand
 ros2 topic echo /claw/joint_states --field position
-ros2 topic echo /claw/temperature
+ros2 topic echo /claw/servo_temperature
 ros2 topic echo /claw/rssi                                              # Wi-Fi signal (dBm)
 ```
 

@@ -46,7 +46,7 @@ flowchart LR
 
 In rough order of priority:
 
-1. **Grip sensing — INA219 (ordered).** Wiring plan and firmware are ready (`/claw/current`, I²C GPIO6/7). Once it's
+1. **Grip sensing — INA219 fitted (2026-09-30)** on I²C GPIO8/9, `/claw/servo_current` works (rest 9–35 mA, moving peaks 140–220 mA, empty claw pushed past closed ~440 mA). Once it's
    in: measure the current idle, moving, closed empty and on an object; then "gripping" from current, force control
    by current, and turn the empty-grasp check (`check_grip`) back on. Servo position can't do it: it reads ~1.01 rad
    both empty and on a tape wall.

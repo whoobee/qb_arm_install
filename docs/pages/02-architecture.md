@@ -174,7 +174,8 @@ Interfaces between the components (real arm). `→` publishes/calls.
 | `/claw/joint_states` | topic | `sensor_msgs/JointState` | ESP32 → joint_state_publisher (20 Hz) |
 | `/claw/command` | topic | `std_msgs/Float64` | pick_executor, you → ESP32 (claw_joint in rad) |
 | `/claw/torque` | topic | `std_msgs/Bool` | you → ESP32 (false = limp) |
-| `/claw/supply_voltage`, `/claw/temperature` | topic | `std_msgs/Float32` | ESP32 → (monitoring, 1 Hz) |
+| `/claw/supply_voltage`, `/claw/servo_temperature`, `/claw/esp_temperature` | topic | `std_msgs/Float32` | ESP32 → (monitoring, 1 Hz) |
+| `/claw/servo_current`, `/claw/angle` | topic | `std_msgs/Float32` | ESP32 → (monitoring, 20 Hz): servo current (INA219), claw angle |
 | `/tf`, `/tf_static` | topic | `tf2_msgs/TFMessage` | robot_state_publisher, static publishers → everyone |
 | `/kinect/rgb/image_raw`, `/kinect/depth_to_rgb/image_raw`, `/kinect/rgb/camera_info` | topic | `sensor_msgs/Image`, `CameraInfo` | Kinect driver → object_detector (only during a snapshot / surface map) |
 | `/kinect/depth/image_raw` | topic | `sensor_msgs/Image` | Kinect driver → obstacle_cloud |

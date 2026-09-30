@@ -43,9 +43,11 @@ flowchart LR
 | `/claw/torque` | `std_msgs/Bool` | in | `false`: servo limp (move the claw by hand); `true`: hold where it is; any command also turns it on |
 | `/claw/joint_states` | `sensor_msgs/JointState` | out, 20 Hz | measured `claw_joint`, stamped with the agent-synchronised clock |
 | `/claw/supply_voltage` | `std_msgs/Float32` | out, 1 Hz | servo input voltage (V) |
-| `/claw/temperature` | `std_msgs/Float32` | out, 1 Hz | servo temperature (°C) |
+| `/claw/servo_temperature` | `std_msgs/Float32` | out, 1 Hz | servo temperature (°C) |
+| `/claw/esp_temperature` | `std_msgs/Float32` | out, 1 Hz | ESP32-C3 chip temperature (°C): the built-in sensor measures the die (10–20 °C above the air, uncalibrated); reads ~76 °C in the claw |
+| `/claw/angle` | `std_msgs/Float32` | out, 20 Hz | claw_joint measured position (rad), same as in `/claw/joint_states`, for plotting |
 | `/claw/rssi` | `std_msgs/Float32` | out, 1 Hz | Wi-Fi signal strength (dBm) |
-| `/claw/current` | `std_msgs/Float32` | out, 20 Hz | servo supply current (A); only when the INA219 is fitted |
+| `/claw/servo_current` | `std_msgs/Float32` | out, 20 Hz | servo supply current (A); only when the INA219 is fitted |
 
 All publishers and subscribers are *reliable* (joint_state_publisher subscribes reliably; a best-effort publisher would
 not match).
