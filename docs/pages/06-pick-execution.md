@@ -12,6 +12,8 @@ Source: `qb_arm_vision/qb_arm_vision/pick_executor.py`, parameters in `config/pi
 | `/qb_arm_vision/place` | service `Place` | `{position, relation, reference, side, gap, plan_only}`: set the held object down at a point, on, into or next to another object |
 | `/qb_arm_vision/surface_map` | client (`SurfaceMap`, object_detector) | fresh height map of the place, to check it's free / how full a container is |
 | `/qb_arm_vision/release` | service `std_srvs/Trigger` | open the claw, detach and remove the held object (drop it) |
+| `/qb_arm_vision/home` | service `qb_arm_vision_interfaces/Home` | move the arm to its home pose (`plan_only` to only plan) |
+| `/qb_arm_vision/save_home` | service `std_srvs/Trigger` | the arm's current pose becomes the home pose |
 | `/qb_arm_vision/objects` | subscription (latched) | the latest detection: objects by id |
 | `/joint_states` | subscription | current `claw_joint` (to wait for the claw) |
 | `/claw/command` | publisher | claw target angle |
@@ -281,6 +283,7 @@ is called.
 | `place_clearance` | 0.003 m | object bottom above the table when the claw opens |
 | `place_distances` | `[0.10, 0.05]` | m, above the place: the straight way down starts here |
 | `retreat_distance` | 0.10 m | straight up afterwards |
+| `home_after_place` | true | then to the home pose (`home_file`: qb_arm `config/home.yaml`) |
 | `into_clearance`, `into_margin` | 0.01 m, 0.01 m | release height above a container's rim; both walls together |
 | `into_step`, `into_max_spots` | 0.02 m, 40 | grid of drop spots over the opening; all are checked, this many (emptiest first) go on to planning |
 | `next_to_gap` | 0.02 m | default gap between the outlines |
@@ -306,6 +309,17 @@ First real run (2026-09-30): tape roll picked 40 cm from the base, placed at (0.
 
 While an object is attached, poses where it would collide are invalid, including the start of any plan that begins
 with the object inside the table or the robot; release before planning elsewhere.
+
+## Home
+
+The home pose is a set of joint values in qb_arm's `config/home.yaml` (launch argument `home_file`), read at every
+move home and checked against the joint limits. Default: the ready pose, TCP at (0.200, 0.000, 0.088), claw pointing
+down. After every successful place and retreat the arm goes home (`home_after_place`, default true, live); if no
+collision-free way home is found the place still succeeds and the reply says *"not home: …"*. The ±2π joints (1, 4, 6)
+go to the equivalent angle nearest to where they are, so the arm never unwinds a full turn to get home.
+
+`/qb_arm_vision/save_home` (control page: **save pose as home**) writes the arm's current pose to `home.yaml`: jog the
+arm to where it should rest (out of the camera's way), then save.
 
 ## Parameters
 
@@ -336,4 +350,5 @@ ros2 service call /qb_arm_vision/pick qb_arm_vision_interfaces/srv/Pick "{object
 ros2 service call /qb_arm_vision/place qb_arm_vision_interfaces/srv/Place "{position: {x: 0.25, y: 0.10}}"
 # or drop it where it is:
 ros2 service call /qb_arm_vision/release std_srvs/srv/Trigger
+ros2 service call /qb_arm_vision/home qb_arm_vision_interfaces/srv/Home "{plan_only: true}"
 ```

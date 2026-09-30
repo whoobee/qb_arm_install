@@ -55,6 +55,9 @@ ros2 service call /qb_arm_vision/place qb_arm_vision_interfaces/srv/Place "{rela
 ros2 service call /qb_arm_vision/place qb_arm_vision_interfaces/srv/Place "{relation: into, reference: white bin, plan_only: true}"
 # or open the claw and drop it where it is
 ros2 service call /qb_arm_vision/release std_srvs/srv/Trigger
+# back to the home pose (after a place it goes there by itself); save the current pose as home
+ros2 service call /qb_arm_vision/home qb_arm_vision_interfaces/srv/Home "{plan_only: true}"
+ros2 service call /qb_arm_vision/save_home std_srvs/srv/Trigger
 ```
 
 In RViz: the **Detections** image shows masks, labels, grasp counts and why detections were dropped; markers show

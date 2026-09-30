@@ -233,7 +233,7 @@ pick executor on every change), servo current, servo and ESP32 temperature (ambe
 |---|---|---|
 | Cell | status, **start real / start sim / stop** (click twice to confirm), arm state / mode / error / TCP, links (arm, claw, GPU server), services | `cell` script; `/ufactory/robot_states`; `ping`; `systemctl is-active` |
 | Claw | live servo current, angle, temperatures, supply voltage, Wi-Fi signal; charts (30 s, temperatures 5 min); **open / half / close / limp** | `/claw/*`; `/claw/command` (clamped to 0..0.96 rad: no squeezing), `/claw/torque` |
-| Control | a prompt + **detect**, the detection image, the objects. **Pick mode** (claw empty): click an object (image or list) → a menu at the mouse: plan / pick. **Place mode** (claw holds something): click an object → into / on / next to (side) it; click free table → place at that point (the pixel's ray meets the measured table plane); back where picked, release. Plan = shown in RViz; go = the real arm, click twice. A mission log of the results | `/qb_arm_vision/detect`, `/pick`, `/place`, `/release`, `/held`, `/debug_image`, `/objects`; `/kinect/rgb/camera_info` |
+| Control | a prompt + **detect**, the detection image, the objects. **Pick mode** (claw empty): click an object (image or list) → a menu at the mouse: plan / pick. **Place mode** (claw holds something): click an object → into / on / next to (side) it; click free table → place at that point (the pixel's ray meets the measured table plane); back where picked, release; plan home / home / save pose as home. Plan = shown in RViz; go = the real arm, click twice. A mission log of the results | `/qb_arm_vision/detect`, `/pick`, `/place`, `/release`, `/home`, `/save_home`, `/held`, `/debug_image`, `/objects`; `/kinect/rgb/camera_info` |
 | Boundaries | vision / no-go zones on a top view of the table (below) | `config/boundaries.yaml` |
 | Log | the cell log, colour-coded by level and node, local times, cell starts marked; filters: level, node, text search (highlighted), error / warning counters; the controller's 150 Hz overrun warnings are hidden (they were 796 of 800 lines) | `~/.ros/log/qb_arm_cell.log` |
 
@@ -312,6 +312,7 @@ keep_out:                  # boxes the arm may never enter (MoveIt collision obj
 | `config/camera_pose.yaml` | camera pose in `world`: x, y, z, `up_in_camera` (tilt), `yaw` |
 | `config/obstacles.yaml` | `obstacle_cloud` (keyed `/**/obstacle_cloud`, it runs in `/kinect`) and `planning_scene_setup` parameters |
 | `config/table.yaml` | measured table plane (`measure_table`), keyed `/**` |
+| `config/home.yaml` | the arm's home pose (joint values): pick_executor goes there after every place; `save_home` writes it |
 | `config/sensors_3d.yaml` | MoveIt 3D sensor (octomap) configuration |
 | `config/boundaries.yaml` | the vision workspace and the keep-out zones ([soft boundaries](#soft-boundaries)); plain YAML, not ROS parameters |
 | `rviz/qb_arm.rviz` | RViz layout: MoveIt motion planning (group `lite6`), detections image, markers |

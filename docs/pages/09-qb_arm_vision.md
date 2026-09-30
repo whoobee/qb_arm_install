@@ -49,6 +49,8 @@ classDiagram
         -claw_position
         +on_pick(request) response
         +on_release(request) response
+        +on_home(request) response
+        +on_save_home(request) response
         +on_place(request) response
         -pick(request) result
         -place(request) result

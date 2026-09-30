@@ -128,7 +128,7 @@ flowchart TB
 | `obstacle_cloud` | qb_arm | Depth → workspace-cropped, voxel-thinned cloud for MoveIt's octomap, the known objects left out (on by default; `obstacles:=false` turns it off) |
 | `planning_scene_setup` | qb_arm | Adds the table and the keep-out zones (`config/boundaries.yaml`) as collision boxes, checks the arm is clear of them, then exits |
 | `object_detector` | qb_arm_vision | Service `/qb_arm_vision/detect`: snapshot → GPU server → objects + grasps → planning scene, markers, debug image. Service `/qb_arm_vision/surface_map`: height map of a region from 7 fresh depth frames, robot cut out |
-| `pick_executor` | qb_arm_vision | Services `/qb_arm_vision/pick`, `/place`, `/release`: grasp → MoveIt plans → execution → claw; sets the held object down after checking the spot in a height map |
+| `pick_executor` | qb_arm_vision | Services `/qb_arm_vision/pick`, `/place`, `/release`, `/home`, `/save_home`: grasp → MoveIt plans → execution → claw; sets the held object down after checking the spot in a height map |
 | ESP32 firmware | qb_arm_gripper | Node `/claw/qbag_esp32`: `/claw/command`, `/claw/torque` → servo; publishes `/claw/joint_states`, voltage, temperature |
 | `claw_driver` | qb_arm | Sim only: a simulated claw with the same topics (or `claw_relay` for sim arm + real claw) |
 | `sim_ready_pose` | qb_arm | Sim only: moves the fake arm off the all-zero pose (claw inside the base) |
@@ -192,6 +192,7 @@ Interfaces between the components (real arm). `→` publishes/calls.
 | `/qb_arm_vision/pick` | service | `qb_arm_vision_interfaces/Pick` | you → pick_executor |
 | `/qb_arm_vision/place` | service | `qb_arm_vision_interfaces/Place` | you → pick_executor |
 | `/qb_arm_vision/release` | service | `std_srvs/Trigger` | you → pick_executor |
+| `/qb_arm_vision/home`, `/save_home` | services | `qb_arm_vision_interfaces/Home`, `std_srvs/Trigger` | you → pick_executor (home pose: qb_arm `config/home.yaml`) |
 | `/compute_ik`, `/compute_cartesian_path`, `/get_planning_scene`, `/apply_planning_scene`, `/check_state_validity` | services | MoveIt | pick_executor, object_detector → move_group |
 | `/move_action`, `/execute_trajectory` | actions | MoveIt | pick_executor → move_group |
 | `/lite6_traj_controller/follow_joint_trajectory` | action | `control_msgs/FollowJointTrajectory` | move_group → controller |
