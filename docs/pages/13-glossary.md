@@ -19,8 +19,10 @@
 | **Extrinsics** | Pose of the camera relative to the robot (`world → camera_base`) |
 | **Finger drop** | How much further along the approach the claw's fingers are when closed than when open (up to 18.8 mm) |
 | **Flying pixels** | Depth pixels on object edges that mix foreground and background and float in between |
+| **Veil (mixed-pixel ramp)** | Flying pixels behind a tall edge seen from the camera: a gradual ramp (10–25 mm beside a 10 cm bin rim) that no per-pixel filter separates from a real object; those cells count as not seen |
 | **FK / IK** | Forward kinematics (joints → pose) / inverse kinematics (pose → joints) |
 | **Grasp** | Pose of the TCP + width at which the gripper closes on an object |
+| **Height map** | Grid of 1 cm cells over the table, each holding the height of what stands there (`surface_map`); used to check place spots and container fill |
 | **Grip target** | Claw command when gripping (1.2 rad), past pads-touching, so the position-controlled servo keeps pushing on the object |
 | **INA219** | Current/voltage sensor (I²C) in the servo supply, for a real "gripping" signal |
 | **qbarm-claw** | qBArm's own Wi-Fi access point for the claw (second USB adapter, 10.42.0.1) |
@@ -42,6 +44,7 @@
 | **Parallelogram linkage** | Two equal bars keeping the finger parallel while it moves on an arc |
 | **Planning group** | Set of joints MoveIt plans together (`lite6`, `qbag`) |
 | **Planning scene** | MoveIt's world model: robot state, objects, ACM, attached objects |
+| **Multipath (ToF)** | Time-of-flight light that bounces off another surface before returning: inside a white bin the floor reads ~1 cm too low |
 | **Pre-grasp** | Pose before the grasp, backed off along the approach (10 cm), reached by free motion |
 | **Process group** | Unix group of processes that can be signalled together (`kill -- -PGID`) |
 | **ros2_control** | ROS framework running controllers against hardware interfaces |

@@ -45,12 +45,20 @@ ros2 service call /qb_arm_vision/pick qb_arm_vision_interfaces/srv/Pick "{object
 ros2 service call /qb_arm_vision/place qb_arm_vision_interfaces/srv/Place "{position: {x: 0.25, y: 0.10}}"
 # or relative to a detected object: on / into / next_to (side: left, right, front, back or empty = any)
 ros2 service call /qb_arm_vision/place qb_arm_vision_interfaces/srv/Place "{relation: next_to, reference: white_bin}"
+# into a container: the reply says how full it is ("white_bin 7% full, 35% of the inside seen"); plan_only first
+ros2 service call /qb_arm_vision/place qb_arm_vision_interfaces/srv/Place "{relation: into, reference: white bin, plan_only: true}"
 # or open the claw and drop it where it is
 ros2 service call /qb_arm_vision/release std_srvs/srv/Trigger
 ```
 
 In RViz: the **Detections** image shows masks, labels, grasp counts and why detections were dropped; markers show
-object hulls (blue = graspable) and grasps (green = best).
+object hulls (blue = graspable) and grasps (green = best). Every place first checks the spot in a fresh **height map**
+(add a MarkerArray display on `/qb_arm_vision/surface_map_markers` to see it: a cube per 1 cm cell, blue = table,
+red = 10 cm and higher, gaps = not seen). A place is refused when the spot is occupied (*"something 23 mm high at …"*),
+mostly not seen (*"70 % of it not seen by the camera"* — e.g. under the arm or right behind a tall object), or, into a
+container, full there — or *"under the arm"*: the camera can't see below the arm, so a spot right under or beside
+it can't be checked (place elsewhere, or move the arm away first).
+`ros2 param set /qb_arm_vision/pick_executor check_place false` turns the check off for the next places.
 
 ## The claw by hand
 

@@ -28,7 +28,12 @@ classDiagram
         -server_url
         -thresholds and grasp parameters
         +on_detect(request) response
+        +on_surface_map(request) response
         -snapshot() images_K_pose
+        -depth_frames(count) stack_K_pose
+        -region_points(depth, K, T, origin, size) points
+        -robot_points(points, held_radius, held_depth) mask
+        -behind_edges(heights, origin, res, camera) mask
         -make_object(det, depth, K, T) Object
         -claw_grasps(cgn_grasps, T) list
         -ring_grasps(world, top, height) list
@@ -44,7 +49,14 @@ classDiagram
         -claw_position
         +on_pick(request) response
         +on_release(request) response
+        +on_place(request) response
         -pick(request) result
+        -place(request) result
+        -place_targets(request, held) targets
+        -survey(targets, held) HeightMap
+        -check_spot(map, target, turn) problem_surface_key
+        -container_fill(map, ref) fill_seen
+        -opens_freely(trajectory) bool
         -reachable(pose) bool
         -plan_to(pose) trajectory
         -straight_line(target, start) trajectory
@@ -73,6 +85,11 @@ classDiagram
         -segment(image, boxes) masks
         -non_max_suppression(boxes, scores) keep
     }
+    class HeightMap {
+        heights[iy, ix]
+        xy[iy, ix]
+        +inside(polygon, margin) mask
+    }
     class Object {
         id
         label
@@ -93,6 +110,8 @@ classDiagram
     ObjectDetector --> Object : produces
     Object *-- Grasp
     PickExecutor ..> Object : consumes
+    PickExecutor ..> ObjectDetector : surface_map
+    PickExecutor --> HeightMap
 ```
 
 ## Interfaces (`qb_arm_vision_interfaces`)
@@ -124,12 +143,34 @@ bool success
 string message
 Object[] objects
 
-# srv/Place.srv
-geometry_msgs/Point position   # object centre on the table (x, y; z ignored); (0, 0) = back where it was picked
+# srv/Place.srv — put the held object down
+geometry_msgs/Point position   # relation "": object centre on the table (x, y; z ignored); (0, 0) = back where it was picked
+string relation      # "", "on", "into", "next_to"
+string reference     # object id from the latest detection, e.g. "white_bin" ("white bin" works too)
+string side          # next_to: "left" (+y), "right" (-y), "front" (+x), "back" (-x); "" = the first that works
+float32 gap          # next_to: m between the two objects; 0 = default (2 cm)
 bool plan_only
 ---
 bool success
 string message
+
+# srv/SurfaceMap.srv — what stands in a square region right now (object_detector)
+float64 center_x
+float64 center_y
+float32 half_size         # m (at most max_map_half_size)
+float32 resolution        # m per cell (0 = 0.01)
+geometry_msgs/Point[] held_outline   # the object in the claw as it hangs now (world xy outline) ...
+float32 held_bottom       # m ... and its bottom and top: its points are left out (+ robot_mask_margin)
+float32 held_top
+---
+bool success
+string message
+uint32 cells              # cells per side; heights[iy * cells + ix]
+float64 origin_x          # cell (ix, iy) centred at origin + (i + 0.5) * resolution
+float64 origin_y
+float32 resolution
+float32[] heights         # m, world z per cell (75th percentile of its points); NaN = not seen
+uint8[] robot             # 1 = points on the robot or the held object fell into the cell
 
 # srv/Pick.srv
 string object_id     # from the latest detection
@@ -179,6 +220,12 @@ can't disagree. Values from `qb_arm/urdf/qbag.xacro`: the crank vector from the 
 | `ring_grasp_score`, `ring_grasp_directions`, `min_ring_hole_radius` | 0.3, 12, 0.02 m | ring grasps |
 | `add_collision_objects` | true | put detected objects into the planning scene |
 | `timeout` | 60 s | server request |
+| `map_resolution`, `max_map_half_size` | 0.01 m, 0.5 m | surface map: default cell size, largest region (± half size) |
+| `map_frames` | 7 | depth frames per surface map, median per pixel |
+| `min_cell_points`, `map_cell_percentile` | 3, 75 | a cell with fewer points is not seen; its height = this percentile of its points |
+| `max_view_slope_deg` | 60 | steeper surfaces (against the view) are left out of the map |
+| `edge_jump`, `edge_veil` | 0.03 m, 0.04 m | cells just behind an edge this much higher (within its shadow + `edge_veil`) are not seen |
+| `robot_mask_margin` | 0.03 m | around each link's collision box when cutting the robot out of the map |
 
 `pick_executor` parameters: see [pick execution](06-pick-execution.md#parameters).
 

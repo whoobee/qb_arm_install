@@ -1,12 +1,13 @@
 # Project status
 
-*State at the end of 2026-09-29.*
+*State on 2026-09-30.*
 
 ## Where we are
 
 **The cell picks real objects end to end on the real hardware.** You name an object; the ceiling camera finds it, the
 cell computes a grasp for the claw, MoveIt plans the motion, the Lite6 executes it, the claw closes and the arm lifts
-the object; `place` sets it down at a given point on the table (or `release` just opens the claw). Picked so far: a **tape roll** lying flat (gripped across its rim) and a
+the object; `place` sets it down at a point, on, into or next to another object — after checking in a fresh height
+map from the camera that the spot is free (or `release` just opens the claw). Picked so far: a **tape roll** lying flat (gripped across its rim) and a
 pair of **pliers** only ~7 mm high (gripped across the jaws). Every link of the chain has run on the real arm:
 
 ```mermaid
@@ -37,7 +38,8 @@ flowchart LR
 | Documentation | This site, `http://192.168.1.171:8080`, with live status. |
 | Claw hardware + firmware | Mounted on the arm (20 mm plate, −45°), calibrated, micro-ROS over **qBArm's own access point** `qbarm-claw` (0 % loss, ~4 ms), OTA updates, servo heat guard. |
 | Grip | Closes to 1.2 rad (past pads-touching) and waits until the fingers stop; the servo pushes with the remaining error, limited by the firmware's stall guard. **No reliable "object held" signal yet**: servo position reads ~1.01 rad both empty and on a tape wall → INA219 current sensor ordered. |
-| Place (set an object down) | Working on the real arm: `/qb_arm_vision/place {x, y}` → above the spot, straight down to the height at which it was grasped above the table (+3 mm), open, straight up. Tape roll placed 2 mm / 12 mm from the target. Height is computed, not felt (no current sensing yet). |
+| Place (set an object down) | Working on the real arm: at a point, on / into / next to a detected object → above the spot, straight down to the height at which it was grasped above the surface (+3 mm), open, straight up. Tape roll placed 2 mm / 12 mm from the target; tape roll and screwdriver placed into a bin. Height is computed, not felt (no current sensing yet). |
+| Place check (height map) | Built and tested against the real camera (plan only): every spot is checked in a fresh height map (7 depth frames, robot cut out) — free under the object and the open fingers, seen by the camera; into a container, room below the rim above the contents, emptiest spot first, fill reported. **Not yet run with a real place motion.** |
 
 ## What is open
 
@@ -49,9 +51,9 @@ In rough order of priority:
    both empty and on a tape wall.
 2. **Claw drive train.** Check for slip between servo horn and gear (the servo turns ~0.2 rad more than the fingers
    move). Rubber pads on the fingers would add friction on smooth objects.
-3. **Place, next steps.** Relative placement (on / into / next_to) is built; "into" tested on the real arm (tape roll
-   into a bin 44 cm out). Next: check that the target spot is free in the camera image before moving (MoveIt only knows detected
-   objects), and — with the INA219 — lower until contact instead of to a computed height.
+3. **Place, next steps.** Relative placement and the height-map check are built; the check still needs a real
+   place run (e.g. next to / into the bin). Then — with the INA219 — lower until contact instead of to a computed
+   height. The map sees nothing under the arm: if that gets in the way, move the arm aside before the check.
 4. **A named "ready" pose** for the real arm in MoveIt (the all-zero "home" pose puts the claw into the robot base).
 5. **Better grasp points on long objects.** The pliers hung by their jaws; rank narrow-slice grasps by the centre of
    mass (the joint) instead of the middle of the outline.
@@ -82,6 +84,7 @@ In rough order of priority:
 | 2026-09-29 | Automatic servo mode before every pick (UFACTORY's service driver in the cell). |
 | 2026-09-30 | **Place**: tape roll picked 40 cm out and set down at (0.25, 0.10) on the real arm. |
 | 2026-09-30 | **Relative placement** (on / into / next_to), two review rounds; tape roll placed **into a bin**; sim claw separated from the real claw. |
+| 2026-09-30 | Object ids from the query (`white_bin`, `tape_1`). **Place check**: height map service, free-spot check, container fill (emptiest spot first). |
 | 2026-09-29 | First real picks: two crashes (see below), both fixed; `cell` script; **first successful real pick**. |
 
 ## Lessons learned (incidents and their fixes)
@@ -107,6 +110,7 @@ These are worth reading: each one changed the design.
 | 15 | Picks failed with MoveIt error −4 after the pliers were taken out of the claw | The arm had been taken out of servo mode (mode 0); ros2_control can't drive it then | Before every pick: check the arm's mode and set servo mode through `xarm_api` (`/uf_api`), started by the cell; arm errors are still left to a person |
 | 16 | The screwdriver couldn't go "into" the bin: "no reachable way down" | Gripped at its centre, the claw had to go above the bin's centre, 44 cm from the base — beyond the reach | "into" tries drop points shifted towards the robot inside the opening while the object still fits |
 | 17 | Sim tests opened and closed the real claw (and heated it) | The real claw's ESP32 is always connected and listens on `/claw/command`; the simulated claw used the same topic | Simulated claw in `/sim_claw`; the pick executor's command topic follows `claw_hw` |
+| 18 | The first height maps showed the parked arm as 41–56 cm obstacles, a 10–25 mm "object" beside the bin, and random 10 mm bumps on the empty table | The Lite6's forearm lies up to 10 cm beside the line between its joint frames; mixed depth pixels form a ramp behind a tall edge; one depth frame is noisy (±10 mm) on the dark table | Cut the robot out by its URDF collision boxes; cells just behind a taller edge (seen from the camera) count as not seen; median of 7 depth frames and the 75th percentile per cell |
 
 > **Safety rule born from this:** with the claw mounted, the arm's **all-zero joint pose** (xArm "home",
 > UFACTORY app "go home") puts the claw **into the robot base**. Never send the real arm there.

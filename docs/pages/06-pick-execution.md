@@ -1,6 +1,7 @@
 # Pick execution
 
-How `pick_executor` turns a detected object and its grasps into arm and claw motion, and how `release` ends a pick.
+How `pick_executor` turns a detected object and its grasps into arm and claw motion, how `place` sets it down
+(after checking the spot in a fresh height map) and how `release` ends a pick.
 Source: `qb_arm_vision/qb_arm_vision/pick_executor.py`, parameters in `config/pick_executor.yaml`.
 
 ## Interfaces
@@ -8,12 +9,13 @@ Source: `qb_arm_vision/qb_arm_vision/pick_executor.py`, parameters in `config/pi
 | Interface | Type | Purpose |
 |---|---|---|
 | `/qb_arm_vision/pick` | service `Pick` | `{object_id, plan_only}` → `{success, message, grasp}` |
-| `/qb_arm_vision/place` | service `Place` | `{position, plan_only}`: set the held object down at a point on the table |
+| `/qb_arm_vision/place` | service `Place` | `{position, relation, reference, side, gap, plan_only}`: set the held object down at a point, on, into or next to another object |
+| `/qb_arm_vision/surface_map` | client (`SurfaceMap`, object_detector) | fresh height map of the place, to check it's free / how full a container is |
 | `/qb_arm_vision/release` | service `std_srvs/Trigger` | open the claw, detach and remove the held object (drop it) |
 | `/qb_arm_vision/objects` | subscription (latched) | the latest detection: objects by id |
 | `/joint_states` | subscription | current `claw_joint` (to wait for the claw) |
 | `/claw/command` | publisher | claw target angle |
-| MoveIt | clients | `/compute_ik`, `/move_action`, `/compute_cartesian_path`, `/execute_trajectory`, `/get_planning_scene`, `/apply_planning_scene` |
+| MoveIt | clients | `/compute_ik`, `/move_action`, `/compute_cartesian_path`, `/execute_trajectory`, `/get_planning_scene`, `/apply_planning_scene`, `/check_state_validity` |
 
 **Before every pick** (also `plan_only`), on the real arm: the arm's controller state (`/ufactory/robot_states`) is
 checked. An arm **error** (`err` ≠ 0) ends the request with the error code — a person recovers the arm. If the arm is
@@ -120,8 +122,8 @@ the controller aborts the trajectory and MoveIt reports error −4; the arm must
 | `relation` | Where | Surface its bottom goes to |
 |---|---|---|
 | `""` | its centre at `position` (x, y in `world`; (0, 0) = back where it was picked) | the table plane |
-| `"on"` | centred on `reference` (an object id from the latest detection, e.g. `white_bin`) | the reference's top + 3 mm |
-| `"into"` | above `reference` (cup, box, …): the centre, or — if that is out of reach — shifted towards the robot inside the opening in 2 cm steps as long as it still fits | the reference's rim + 1 cm, then released (the camera can't see how deep it is) |
+| `"on"` | centred on `reference` (an object id from the latest detection, e.g. `white_bin`) | the reference's top (or the highest point measured under the object, if slightly higher) + 3 mm |
+| `"into"` | into `reference` (cup, box, bin, …): the **emptiest** spot inside the opening where it fits (see [How full is a container?](#how-full-is-a-container)) | the reference's rim + 1 cm, then released |
 | `"next_to"` | beside `reference` on `side` (`left` +y, `right` −y, `front` +x away from the robot, `back`; empty = every side, nearest to the robot first), `gap` apart (default 2 cm) | the table plane |
 
 ```bash
@@ -134,10 +136,11 @@ ros2 service call /qb_arm_vision/place qb_arm_vision_interfaces/srv/Place "{rela
   bounding boxes — a round object's box overestimated by ~40 %) plus the gap — and at least the **open claw's reach**:
   when the claw lets go its pads swing out to 46 mm from the TCP along the closing axis, which can be more than the object.
   The reply states the real distance between the objects.
-- **into fit check**: the held object goes down centred on the container, in its pick orientation or turned 180°; its
-  outline must stay inside the container's outline minus a 5 mm wall **in every direction** (72 directions checked), else
-  the place is refused with how much too wide it is. After an "into" the object is removed from the scene (where it fell
-  is unknown; the next detection sees it).
+- **into fit check**: the held object goes down in its pick orientation or turned 180°; its outline must stay inside
+  the container's outline minus a 5 mm wall **in every direction** (72 directions checked). Drop spots lie on a 2 cm
+  grid over the opening; all of them are checked, the 40 emptiest go on to planning. If the object fits nowhere the place
+  is refused with how much too wide it is. After an "into" the object is removed from the scene (where it fell is unknown; the next
+  detection sees it).
 - **The opening claw is collision-checked**: the claw opens without a plan, so before a candidate is accepted MoveIt
   checks the final pose at claw angles from the gripped one down to fully open in 0.12 rad steps
   (`/check_state_validity` with the claw's group `qbag`: only the moving claw links; a whole-robot check also failed on
@@ -147,19 +150,24 @@ ros2 service call /qb_arm_vision/place qb_arm_vision_interfaces/srv/Place "{rela
 - **next_to** uses the whole open claw's reach (pads 46 mm, finger knuckles 64 mm along the closing axis, palm 35 mm
   across) and refuses a reference that stands on something unmodelled (its support would be under the held object).
 - **into, off centre**: a bin 44 cm from the base was out of reach at its centre (the Lite6 reaches ~40 cm at that
-  height); 2–3 cm towards the robot everything was reachable.
+  height); spots nearer the robot were reachable. Unreachable spots cost little: the IK check rejects them in ~50 ms.
 - After a place (not into) the object's new pose (`T_place · T_grasp⁻¹ · T_object`, down by the clearance) replaces its old
-  one in the executor's detection, so it can serve as a reference right away.
+  one in the executor's detection — its grasps moved the same way — so it can serve as a reference or be picked again
+  right away.
 - Detect again while holding is fine: the detector leaves out the object in the claw (near the TCP and floating above
-  the table) and numbers new objects after the held one, so ids don't clash.
+  the table) and never gives a new object the held one's id.
 
 ```mermaid
 flowchart TB
     S(["place(relation, reference / x, y)"]) --> H{"holding an object<br/>from a pick?"}
     H -- no --> F1(["fail: pick first"])
     H -- yes --> G["TCP height above the object's bottom at the grasp:<br/>h = z_tcp(grasp) - bottom(object)"]
-    G --> T["candidate targets: at (x, y) / on / into / next to the reference<br/>(each side), same orientation or turned 180 deg,<br/>z = surface + h + clearance"]
-    T --> C["for 10 cm / 5 cm above: IK check, plan there,<br/>straight way down (MoveIt carries the object),<br/>open claw at the end collision-free?"]
+    G --> T["candidate targets: at (x, y) / on / into (grid of drop spots) /<br/>next to the reference (each side),<br/>same orientation or turned 180 deg"]
+    T --> HM["fresh height map around all targets<br/>(object_detector surface_map, 7 depth frames)"]
+    HM --> CK["per target and turn: free under the object and the open fingers?<br/>seen by the camera? into: room below the rim?"]
+    CK -- none left --> F3(["fail: no free spot (reasons per spot)"])
+    CK --> SO["sort: into = emptiest spot first"]
+    SO --> C["for 10 cm / 5 cm above: IK check, plan there,<br/>straight way down (MoveIt carries the object),<br/>open claw at the end collision-free?"]
     C -- none --> F2(["fail: no reachable, collision-free way down"])
     C -- ok --> PO{"plan_only?"}
     PO -- yes --> R1(["success: planned"])
@@ -173,13 +181,100 @@ TCP pose recorded when the object was attached. The height is **computed, not fe
 object's bottom should be 3 mm above the measured table plane (`place_clearance`) and opens. If the object slipped in
 the claw it ends up that much off (no force/current sensing yet). The servo-mode check runs first, as for the pick.
 
+### Is the spot free? The height map
+
+MoveIt only knows the objects of the **last detection**. Anything put down since, moved, or never asked for in the
+prompt is invisible to it. So before planning, the executor asks the detector for a **height map** of the place: a grid
+of 1 cm cells over the region around all candidate spots, each holding the height of whatever stands there right now.
+
+```mermaid
+flowchart LR
+    F["7 depth frames<br/>(~0.25 s)"] --> MED["median per pixel<br/>(noise +-10 mm -> +-3 mm)"]
+    MED --> FLT["drop steep surfaces<br/>(> 60 deg to the view: walls)"]
+    FLT --> PTS["3D points in world<br/>(only the image part that sees the region)"]
+    PTS --> ROB["leave out the robot:<br/>URDF collision boxes of every link<br/>+ the held object's outline as it hangs now<br/>(those cells are flagged 'robot')"]
+    ROB --> CELL["per 1 cm cell: 75th percentile<br/>of its points' heights<br/>(< 3 points: not seen)"]
+    CELL --> VEIL["cells just behind a taller edge<br/>(seen from the camera): not seen"]
+    VEIL --> MAP["heights[iy, ix]<br/>NaN = not seen"]
+```
+
+For each candidate spot (and each of its two turns) the executor lays three footprints over the map, each grown by 1 cm:
+the **held object's outline**, the **band the open fingers sweep** (±43 mm along the closing axis, 16 mm wide) and the
+**claw body** (knuckles and cranks ±64 mm, palm ±35 mm, from 28 mm above the TCP):
+
+- **Outside the map / under the arm**: the footprints must lie completely inside the map, and must not touch a cell
+  where points of the robot or of the held object fell — what is below or right beside the arm can't be seen, and
+  cutting the robot out would also cut out an obstacle touching it: *"under the arm or the object in the claw, where
+  the camera cannot check it"*.
+- **Occupied**: a seen cell is higher than what will be above it — the object's bottom under the object, the fingertips
+  under the fingers, the claw body under the body — and at least 8 mm (`free_tolerance`) above the surface. Two such
+  cells (`min_blocked_cells`) make the spot occupied: *"something 23 mm high at (0.215, 0.005) under the open fingers"*.
+- **Not seen**: more than 40 % (`max_hidden`) of those cells have no reliable depth — hidden behind something or out
+  of the camera's view: *"70 % of it not seen by the camera"*. The robot does not put things where it can't see that
+  the spot is free. (Into a container, its own inside doesn't count here: its walls hide it by construction.)
+- **"on"**: the object comes to rest on the highest part of the reference's top under it; if the map measures that a
+  little higher than the detection did (up to 8 mm), the set-down height follows the map.
+- **"back where it was picked"** is not checked: the object hangs above that spot and hides it, and it was just
+  picked from there.
+
+**Why so much filtering** — measured on the real cell (2026-09-30):
+
+| Effect | Seen as | Fix |
+|---|---|---|
+| Depth noise on the dark table | one frame: cells up to 10 mm, 7 cells above 8 mm in a 16 × 16 cm patch | median of 7 frames: ±3 mm; 75th percentile per cell (instead of the maximum) |
+| The Lite6's forearm lies up to 10 cm beside the line between its joint frames | the arm, parked above the bin, showed up as 41–56 cm "obstacles" | cut out every link's collision-mesh box (from `/robot_description`, + 3 cm) |
+| **Mixed pixels past an edge** ("veil"): a depth pixel that sees part rim and part table reads a depth in between | a 10–25 mm ramp beside the bin's rim, on the side away from the camera | cells just behind a ≥ 3 cm taller edge, seen from the camera, within the edge's shadow length + 4 cm, count as not seen |
+
+### How full is a container?
+
+"Is the centre hole at least as deep as the rim is high?" would give one yes/no for the whole bin. The height map allows
+something better, because the ceiling camera looks **into** the container:
+
+```mermaid
+flowchart TB
+    IN["cells inside the container's outline<br/>minus 1.5 cm (walls, rim)"] --> FILL["fill = mean over the seen cells of<br/>(height - floor) / (rim - floor)<br/>floor = bottom + 5 mm"]
+    SPOT["each drop spot where the object fits<br/>(outline inside the opening)"] --> PILE["contents under the object:<br/>95th percentile of those cells"]
+    PILE --> ROOM{"rim - contents<br/>>= min(object height, rim - floor)<br/>- 8 mm ?"}
+    ROOM -- no --> FULL["full there: skip"]
+    ROOM -- yes --> KEY["candidate, sorted by<br/>contents height (whole cm)"]
+    KEY --> TRY["try the emptiest first,<br/>then nearest to the centre"]
+```
+
+- A spot is usable when the object, resting on the contents under it, fits **completely below the rim** (8 mm
+  tolerance). An object taller than the container only goes onto an (almost) empty part of the floor.
+- **Cups and deep boxes**: the camera can't see their inside at all (walls). Such spots are still allowed — dropped
+  above the rim as before, if nothing above the rim was seen — but only after every spot whose contents were seen;
+  the reply says *"its contents not seen"*.
+- The container is "full" **for this object** when no spot is usable: a pen may still fit where a bottle doesn't. The
+  reply then lists the spots and why, e.g. *"full there: contents 1.9 cm high leave 7.6 cm below the rim, it needs
+  8.7 cm"*.
+- The claw drops where the container is **emptiest**, so it fills evenly instead of piling up in the middle.
+- Every reply for "into" reports the fill: *"white_bin 7% full, 35% of the inside seen"*.
+
+**Limits**: the camera looks in at ~20°, so the strip along the wall nearest to the camera is hidden (about 0.4 × the
+wall height, plus the veil band): spots there count as not seen. Very dark or transparent contents return little or no
+depth (not seen), a shiny white bin's floor reads ~1 cm too low (light bouncing between the walls). With the arm
+parked right above the container most of the inside is hidden — the map is taken from wherever the arm is when place
+is called.
+
 | Parameter | Default | Meaning |
 |---|---|---|
 | `place_clearance` | 0.003 m | object bottom above the table when the claw opens |
 | `place_distances` | `[0.10, 0.05]` | m, above the place: the straight way down starts here |
 | `retreat_distance` | 0.10 m | straight up afterwards |
 | `into_clearance`, `into_margin` | 0.01 m, 0.01 m | release height above a container's rim; both walls together |
+| `into_step`, `into_max_spots` | 0.02 m, 40 | grid of drop spots over the opening; all are checked, this many (emptiest first) go on to planning |
 | `next_to_gap` | 0.02 m | default gap between the outlines |
+| `check_place` | true | check the spots in a fresh height map first |
+| `free_tolerance` | 0.008 m | higher above the surface under the object / fingers = something there |
+| `free_margin` | 0.01 m | around the object's outline and the fingers' band |
+| `min_blocked_cells` | 2 | 1 cm cells that must be too high before a spot is occupied |
+| `max_hidden` | 0.4 | a spot with more of its area not seen is refused |
+| `container_wall`, `container_floor` | 0.015 m, 0.005 m | inside = outline minus this; floor above the container's bottom |
+| `max_survey_half_size` | 0.5 m | largest height map (± this), as object_detector's `max_map_half_size` |
+
+The place-check parameters are read at every place, so `ros2 param set /qb_arm_vision/pick_executor check_place false`
+(or any of the others) applies to the next one.
 | `table_plane` | from qb_arm `config/table.yaml` | measured table plane |
 
 First real run (2026-09-30): tape roll picked 40 cm from the base, placed at (0.25, 0.10); the camera found it at
@@ -188,7 +283,7 @@ First real run (2026-09-30): tape roll picked 40 cm from the base, placed at (0.
 ## Release
 
 `/qb_arm_vision/release` opens the claw (waits for it), then, if an object is attached, **detaches** it and
-**removes** it from the planning scene. The object falls from wherever the claw is — there is no *place* motion yet.
+**removes** it from the planning scene. The object falls from wherever the claw is; `place` is the controlled way down.
 
 While an object is attached, poses where it would collide are invalid, including the start of any plan that begins
 with the object inside the table or the robot; release before planning elsewhere.
