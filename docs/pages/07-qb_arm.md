@@ -222,23 +222,26 @@ current state against the zones (an arm already inside one makes every plan fail
 
 `qb-arm-control.service` (installed by qb_arm_install, `--no-control` to skip) runs
 `scripts/control_center` permanently, independent of the cell: **http://192.168.1.171:8081**. Stdlib HTTP server +
-an rclpy node (`control_center`); pages in `web/control_center.html` (tabs) and `web/boundary_editor.html` (the
-Boundaries tab, in a frame), no external libraries.
+an rclpy node (`control_center`); the page is `web/control_center.html` (Vue 3, vendored in `web/vendor/`, so it works
+offline; a HUD style), the Boundaries tab is `web/boundary_editor.html` in a frame.
+
+**Status bar** (always visible): cell (real / sim / off), what the claw holds (`/qb_arm_vision/held`, published by the
+pick executor on every change), servo current, servo and ESP32 temperature (amber / red from 250 / 400 mA, 55 / 65 °C,
+80 / 90 °C), claw angle.
 
 | Tab | What | ROS / system side |
 |---|---|---|
-| Cell | status, **Start real / Start sim / Stop** (with a confirmation), arm state / mode / error / TCP, reachability of arm, claw and GPU server, the services | `cell` script; `/ufactory/robot_states`; `ping`; `systemctl is-active` |
-| Claw | live servo current, angle, servo and ESP32 temperature, supply voltage, Wi-Fi signal; charts (30 s, temperatures 5 min); **Open / Half / Close / Limp** | `/claw/*` topics; `/claw/command` (clamped to 0..0.96 rad: no squeezing), `/claw/torque` |
-| Control | a text box for the prompt + **Detect**, the detection image (objects, grasps, boundaries), the objects with their ids, a plain camera frame; **pick** an object and **place** it at a point, on / into / next to (a side) another one or back where it was picked, **release** — objects chosen in the list or by clicking them in the image, the place point by clicking the table in the image (the pixel's ray meets the measured table plane); **Plan** (shown in RViz) or execute after a confirmation | `/qb_arm_vision/detect`, `/qb_arm_vision/pick`, `/place`, `/release`, `/qb_arm_vision/debug_image`, `/qb_arm_vision/objects`, `/kinect/rgb/camera_info`, `/kinect/rgb/image_raw` |
+| Cell | status, **start real / start sim / stop** (click twice to confirm), arm state / mode / error / TCP, links (arm, claw, GPU server), services | `cell` script; `/ufactory/robot_states`; `ping`; `systemctl is-active` |
+| Claw | live servo current, angle, temperatures, supply voltage, Wi-Fi signal; charts (30 s, temperatures 5 min); **open / half / close / limp** | `/claw/*`; `/claw/command` (clamped to 0..0.96 rad: no squeezing), `/claw/torque` |
+| Control | a prompt + **detect**, the detection image, the objects. **Pick mode** (claw empty): click an object (image or list) → a menu at the mouse: plan / pick. **Place mode** (claw holds something): click an object → into / on / next to (side) it; click free table → place at that point (the pixel's ray meets the measured table plane); back where picked, release. Plan = shown in RViz; go = the real arm, click twice. A mission log of the results | `/qb_arm_vision/detect`, `/pick`, `/place`, `/release`, `/held`, `/debug_image`, `/objects`; `/kinect/rgb/camera_info` |
 | Boundaries | vision / no-go zones on a top view of the table (below) | `config/boundaries.yaml` |
-| Log | the last 250 lines of `~/.ros/log/qb_arm_cell.log`, live | |
+| Log | the cell log, colour-coded by level and node, local times, cell starts marked; filters: level, node, text search (highlighted), error / warning counters; the controller's 150 Hz overrun warnings are hidden (they were 796 of 800 lines) | `~/.ros/log/qb_arm_cell.log` |
 
-The arm moves only through the pick executor, when a pick or place is executed from the Control tab (after a
-confirmation); the claw moves from the Claw tab. The service passes the desktop session
-(`WAYLAND_DISPLAY`, `DISPLAY`, `XDG_RUNTIME_DIR`) to the cell it starts, so RViz opens on qBArm's screen, and uses
-`KillMode=process` with the server as the main process (`exec python3 …`, not `ros2 run`, a wrapper that stayed
-behind holding the port): restarting the control center never stops a running cell. No login — it is meant for the
-local network only.
+The arm moves only through the pick executor, when a pick or place is executed from the Control tab; the claw moves
+from the Claw tab. The service passes the desktop session (`WAYLAND_DISPLAY`, `DISPLAY`, `XDG_RUNTIME_DIR`) to the
+cell it starts, so RViz opens on qBArm's screen, and uses `KillMode=process` with the server as the main process
+(`exec python3 …`, not `ros2 run`, a wrapper that stayed behind holding the port): restarting the control center
+never stops a running cell. No login — it is meant for the local network only.
 
 **Boundaries tab**: a top view of the table (the colour image warped onto the table plane, 2.5 mm per pixel, x up /
 y left), vision zones (free quadrilaterals) and no-go zones (boxes: move, resize, heights, turn, name), checked

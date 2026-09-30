@@ -3,8 +3,9 @@
 Runbook for daily use: starting and stopping, picking, calibration, recovery, safety rules and troubleshooting.
 
 **The control page: http://192.168.1.171:8081** — start / stop the cell, watch the arm and the claw (temperatures,
-current, angle), detect objects with a typed prompt, pick and place them by clicking in the camera image (plan first,
-then execute), edit the boundaries, follow the log.
+current, angle — always in the status bar), detect objects with a typed prompt, pick an object by clicking it and
+place it by clicking the target (a menu at the mouse: into / on / next to, or a point on the table; plan first, then
+execute), edit the boundaries, read the log with filters and search.
 Everything below also works from a terminal.
 
 ## Safety rules
