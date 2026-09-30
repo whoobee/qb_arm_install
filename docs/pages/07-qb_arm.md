@@ -189,8 +189,14 @@ octomap, at 5 Hz:
    dropped. MoveIt has those as exact collision objects, and the claw must be allowed to touch the one it picks — in
    the octomap it would be an obstacle like any other (why the octomap used to be off). Everything else stays: a
    bottle nobody asked about, cables, a hand.
-6. **Voxel thinning**: one point per 1 cm voxel (key = 3 × 21-bit voxel indices packed into one int64, `np.unique`).
-7. Publish in the **depth camera frame** (MoveIt uses the cloud's frame origin as the sensor position to clear free
+6. **The robot, generously**: on top of MoveIt's own self-filter (5 cm), every link's collision geometry as a box
+   (`qb_arm/robot_geometry.py`, from `/robot_description`) grown by `robot_margin` (5 cm), and a cylinder around
+   `link_tcp` (radius 10 cm, from 15 cm below to 10 cm above it) for the claw and whatever it holds. The moving claw
+   otherwise left ghost voxels that a lift then started "in collision" with; clearing the octomap before the lift
+   alone was not reliable (a lift stopped after 1 cm). Since this, lifts and retreats go through. The price: a real
+   obstacle within those few cm of the arm is not added while the arm is there (what was seen before stays).
+7. **Voxel thinning**: one point per 1 cm voxel (key = 3 × 21-bit voxel indices packed into one int64, `np.unique`).
+8. Publish in the **depth camera frame** (MoveIt uses the cloud's frame origin as the sensor position to clear free
    space along the rays).
 
 MoveIt side (`config/sensors_3d.yaml`): `PointCloudOctomapUpdater`, 2 cm octomap in `world`, max range 3 m, robot
