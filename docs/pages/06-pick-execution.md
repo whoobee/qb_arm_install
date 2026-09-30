@@ -115,17 +115,50 @@ the controller aborts the trajectory and MoveIt reports error −4; the arm must
 
 ## Place
 
-`/qb_arm_vision/place` (`qb_arm_vision_interfaces/srv/Place`: `{position, plan_only}` → `{success, message}`) puts the object
-held since the last successful pick down with its centre at `position` (x, y in `world`; z ignored; (0, 0) = back where
-it was picked).
+`/qb_arm_vision/place` (`qb_arm_vision_interfaces/srv/Place`) puts the object held since the last successful pick down:
+
+| `relation` | Where | Surface its bottom goes to |
+|---|---|---|
+| `""` | its centre at `position` (x, y in `world`; (0, 0) = back where it was picked) | the table plane |
+| `"on"` | centred on `reference` (an object id from the latest detection) | the reference's top + 3 mm |
+| `"into"` | above `reference` (cup, box, …): the centre, or — if that is out of reach — shifted towards the robot inside the opening in 2 cm steps as long as it still fits | the reference's rim + 1 cm, then released (the camera can't see how deep it is) |
+| `"next_to"` | beside `reference` on `side` (`left` +y, `right` −y, `front` +x away from the robot, `back`; empty = every side, nearest to the robot first), `gap` apart (default 2 cm) | the table plane |
+
+```bash
+ros2 service call /qb_arm_vision/place qb_arm_vision_interfaces/srv/Place "{relation: next_to, reference: obj_3}"
+ros2 service call /qb_arm_vision/place qb_arm_vision_interfaces/srv/Place "{relation: on, reference: obj_3, plan_only: true}"
+ros2 service call /qb_arm_vision/place qb_arm_vision_interfaces/srv/Place "{relation: into, reference: obj_2}"
+```
+
+- **next_to spacing**: the reference's outline and the held object's outline (the detector's convex hulls, not their
+  bounding boxes — a round object's box overestimated by ~40 %) plus the gap — and at least the **open claw's reach**:
+  when the claw lets go its pads swing out to 46 mm from the TCP along the closing axis, which can be more than the object.
+  The reply states the real distance between the objects.
+- **into fit check**: the held object goes down centred on the container, in its pick orientation or turned 180°; its
+  outline must stay inside the container's outline minus a 5 mm wall **in every direction** (72 directions checked), else
+  the place is refused with how much too wide it is. After an "into" the object is removed from the scene (where it fell
+  is unknown; the next detection sees it).
+- **The opening claw is collision-checked**: the claw opens without a plan, so before a candidate is accepted MoveIt
+  checks the final pose at claw angles from the gripped one down to fully open in 0.12 rad steps
+  (`/check_state_validity`, whole robot, no group — a group would leave out the claw links). Part-way the fingers are
+  already outside the object but still low. A candidate whose fingers would hit the reference, another object or the
+  table is skipped.
+- **next_to** uses the whole open claw's reach (pads 46 mm, finger knuckles 64 mm along the closing axis, palm 35 mm
+  across) and refuses a reference that stands on something unmodelled (its support would be under the held object).
+- **into, off centre**: a bin 44 cm from the base was out of reach at its centre (the Lite6 reaches ~40 cm at that
+  height); 2–3 cm towards the robot everything was reachable.
+- After a place (not into) the object's new pose (`T_place · T_grasp⁻¹ · T_object`, down by the clearance) replaces its old
+  one in the executor's detection, so it can serve as a reference right away.
+- Detect again while holding is fine: the detector leaves out the object in the claw (near the TCP and floating above
+  the table) and numbers new objects after the held one, so ids don't clash.
 
 ```mermaid
 flowchart TB
-    S(["place(x, y)"]) --> H{"holding an object<br/>from a pick?"}
+    S(["place(relation, reference / x, y)"]) --> H{"holding an object<br/>from a pick?"}
     H -- no --> F1(["fail: pick first"])
-    H -- yes --> G["TCP height above the table at the grasp:<br/>h = z_tcp(grasp) - table(object)"]
-    G --> T["place pose: object centre at (x, y), same orientation<br/>(also turned 180 deg), z = table(x, y) + h + 3 mm"]
-    T --> C["for 10 cm / 5 cm above: IK check, plan there,<br/>straight way down (MoveIt carries the object)"]
+    H -- yes --> G["TCP height above the object's bottom at the grasp:<br/>h = z_tcp(grasp) - bottom(object)"]
+    G --> T["candidate targets: at (x, y) / on / into / next to the reference<br/>(each side), same orientation or turned 180 deg,<br/>z = surface + h + clearance"]
+    T --> C["for 10 cm / 5 cm above: IK check, plan there,<br/>straight way down (MoveIt carries the object),<br/>open claw at the end collision-free?"]
     C -- none --> F2(["fail: no reachable, collision-free way down"])
     C -- ok --> PO{"plan_only?"}
     PO -- yes --> R1(["success: planned"])
@@ -144,6 +177,8 @@ the claw it ends up that much off (no force/current sensing yet). The servo-mode
 | `place_clearance` | 0.003 m | object bottom above the table when the claw opens |
 | `place_distances` | `[0.10, 0.05]` | m, above the place: the straight way down starts here |
 | `retreat_distance` | 0.10 m | straight up afterwards |
+| `into_clearance`, `into_margin` | 0.01 m, 0.01 m | release height above a container's rim; both walls together |
+| `next_to_gap` | 0.02 m | default gap between the outlines |
 | `table_plane` | from qb_arm `config/table.yaml` | measured table plane |
 
 First real run (2026-09-30): tape roll picked 40 cm from the base, placed at (0.25, 0.10); the camera found it at

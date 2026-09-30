@@ -136,7 +136,13 @@ in the camera's optical frame, then `p_world = R · p_cam + t` with `T_world_cam
   `table(x, y) = a·x + b·y + c` is the **measured table plane** under the object (`table_plane` from qb_arm's
   `config/table.yaml`, measured with `measure_table`; the table is tilted 0.87° against the robot base, −1.7 mm at the
   base, −6 mm at 30 cm). Without a plane: the table seen in a ring 4–12 px around the mask. Objects outside
-  5 mm–40 cm are dropped. Thin metal reads flat in depth (pliers: 7 mm).
+  5 mm–40 cm are dropped. Thin metal reads flat in depth (pliers: 7 mm). If the table seen around the object is more
+  than 15 mm above the plane (`support_threshold`), the object stands on something (e.g. placed "on" another object) and
+  its base is that support.
+- **Held in the claw**: while the claw holds an object, a detection with a visible point within 6 cm (xy) of the TCP
+  and its top within 5 cm of the TCP's height is the held object and is left out (a held object hangs with its top at
+  the claw; an object on the table next to the claw has its top far below it); new ids are numbered after the held one.
+  "Stands on something" additionally requires the object's own lowest points not to reach below that support.
 - **Footprint**: keep xy between the 2nd and 98th percentile per axis; the **minimum-area rectangle** around them
   (OpenCV `minAreaRect`) gives the footprint centre, long and short side and the yaw of the long side.
 

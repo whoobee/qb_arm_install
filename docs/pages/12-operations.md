@@ -42,6 +42,8 @@ ros2 service call /qb_arm_vision/pick qb_arm_vision_interfaces/srv/Pick "{object
 ros2 service call /qb_arm_vision/pick qb_arm_vision_interfaces/srv/Pick "{object_id: obj_1}"
 # set it down at a point on the table ((0, 0) = back where it was picked)
 ros2 service call /qb_arm_vision/place qb_arm_vision_interfaces/srv/Place "{position: {x: 0.25, y: 0.10}}"
+# or relative to a detected object: on / into / next_to (side: left, right, front, back or empty = any)
+ros2 service call /qb_arm_vision/place qb_arm_vision_interfaces/srv/Place "{relation: next_to, reference: obj_3}"
 # or open the claw and drop it where it is
 ros2 service call /qb_arm_vision/release std_srvs/srv/Trigger
 ```
@@ -59,6 +61,8 @@ ros2 topic echo /claw/joint_states --field position
 ros2 topic echo /claw/temperature
 ros2 topic echo /claw/rssi                                              # Wi-Fi signal (dBm)
 ```
+
+The simulated claw (sim cell) listens on `/sim_claw/command` instead.
 
 Use `-r 1` for a few seconds instead of `--once`: a one-shot publisher can exit before discovery has matched it.
 

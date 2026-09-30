@@ -49,8 +49,9 @@ In rough order of priority:
    both empty and on a tape wall.
 2. **Claw drive train.** Check for slip between servo horn and gear (the servo turns ~0.2 rad more than the fingers
    move). Rubber pads on the fingers would add friction on smooth objects.
-3. **Place, next steps.** Place relative to other objects ("on", "next to", "into" a detected object), check that the
-   target spot is free before moving, and — with the INA219 — lower until contact instead of to a computed height.
+3. **Place, next steps.** Relative placement (on / into / next_to) is built; "into" tested on the real arm (tape roll
+   into a bin 44 cm out). Next: check that the target spot is free in the camera image before moving (MoveIt only knows detected
+   objects), and — with the INA219 — lower until contact instead of to a computed height.
 4. **A named "ready" pose** for the real arm in MoveIt (the all-zero "home" pose puts the claw into the robot base).
 5. **Better grasp points on long objects.** The pliers hung by their jaws; rank narrow-slice grasps by the centre of
    mass (the joint) instead of the middle of the outline.
@@ -80,6 +81,7 @@ In rough order of priority:
 | 2026-09-29 | Table measured as a plane (tilted 0.87°); narrow-slice grasps; parameter-file fix; **first flat object picked (pliers)**. |
 | 2026-09-29 | Automatic servo mode before every pick (UFACTORY's service driver in the cell). |
 | 2026-09-30 | **Place**: tape roll picked 40 cm out and set down at (0.25, 0.10) on the real arm. |
+| 2026-09-30 | **Relative placement** (on / into / next_to), two review rounds; tape roll placed **into a bin**; sim claw separated from the real claw. |
 | 2026-09-29 | First real picks: two crashes (see below), both fixed; `cell` script; **first successful real pick**. |
 
 ## Lessons learned (incidents and their fixes)
@@ -103,6 +105,8 @@ These are worth reading: each one changed the design.
 | 13 | Changing `fingertip_clearance` in the YAML had no effect | The vision nodes run in `/qb_arm_vision`, the YAML was keyed `object_detector:` → never applied; code defaults happened to equal the files | Keys `/**/<node>:` (also `obstacle_cloud` in `/kinect`) |
 | 14 | MoveIt's table was missing after some starts | `planning_scene_setup` waited only 10 s; move_group answers slowly right after start-up | 30 s timeout, 3 attempts |
 | 15 | Picks failed with MoveIt error −4 after the pliers were taken out of the claw | The arm had been taken out of servo mode (mode 0); ros2_control can't drive it then | Before every pick: check the arm's mode and set servo mode through `xarm_api` (`/uf_api`), started by the cell; arm errors are still left to a person |
+| 16 | The screwdriver couldn't go "into" the bin: "no reachable way down" | Gripped at its centre, the claw had to go above the bin's centre, 44 cm from the base — beyond the reach | "into" tries drop points shifted towards the robot inside the opening while the object still fits |
+| 17 | Sim tests opened and closed the real claw (and heated it) | The real claw's ESP32 is always connected and listens on `/claw/command`; the simulated claw used the same topic | Simulated claw in `/sim_claw`; the pick executor's command topic follows `claw_hw` |
 
 > **Safety rule born from this:** with the claw mounted, the arm's **all-zero joint pose** (xArm "home",
 > UFACTORY app "go home") puts the claw **into the robot base**. Never send the real arm there.

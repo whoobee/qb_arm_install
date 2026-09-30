@@ -169,7 +169,8 @@ pose `[0, 0.1733, 0.555, 0, 0.3817, 0]` rad straight to the controller, **retryi
 
 ### `claw_driver` — simulated claw
 
-`claw_driver` (namespace `claw`) publishes `claw_joint` on `joint_states` at 20 Hz and moves it towards
+`claw_driver` (namespace **`sim_claw`**, never `claw`: the real claw's ESP32 is always connected and listens on
+`/claw/command`, so a simulated claw there moved the real one) publishes `claw_joint` on `joint_states` at 20 Hz and moves it towards
 `/claw/command` at 1.5 rad/s, clamped to 0..0.96. With `hardware:=true` it only relays `/claw/joint_states` to
 `output_topic` (sim arm + real claw).
 
