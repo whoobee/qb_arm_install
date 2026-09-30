@@ -65,7 +65,11 @@ In rough order of priority:
 8. **Octomap during picks.** Filter the target object out of the obstacle cloud so obstacle avoidance can stay on.
 9. **Servo alternative**, if current sensing isn't enough: Feetech STS3215 (same bus; torque limit and current in the
    servo), needs a new servo library and mount.
-10. Housekeeping: remove the temporary passwordless sudo on qBArm; reserve qBArm's address (.171) in the router.
+10. **ESP32 temperature — watching.** The claw's ESP32-C3 chip reads ~73 °C (`/claw/esp_temperature`; it was 76–78 °C
+    before the firmware went to 80 MHz with an idle pause per loop). Warm to the touch, within spec (85–105 °C). The
+    rest is the always-on Wi-Fi radio and the board's linear regulator. If it climbs: Wi-Fi modem sleep (claw commands
+    up to ~100 ms slower, off during OTA), 3.3 V from a buck converter instead of the regulator, or air / a heat sink.
+11. Housekeeping: remove the temporary passwordless sudo on qBArm; reserve qBArm's address (.171) in the router.
 
 ## Timeline
 
