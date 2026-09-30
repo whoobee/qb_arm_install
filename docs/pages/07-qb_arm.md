@@ -198,7 +198,10 @@ self-filter padding 5 cm (points this close to the robot are not obstacles; the 
 too). **On by default in the cell** since 2026-09-30, after the arm hit a water bottle nobody had detected. Before
 every pick and place the executor clears the octomap and waits `octomap_settle` (1.2 s) for the camera to refill it:
 voxels of an object that is now known (and left out of the cloud) would otherwise stay, since the camera can't clear
-them through the object. Limits: things lower than 3 cm are not obstacles (the table cut), what the arm itself hides
+them through the object. The same after the claw grasped (before the lift) and after it let go (before the retreat): the
+moving claw leaves **ghost voxels** (camera frames and joint states are not exactly in step, so the self-filter
+misses parts of it for a moment), and where it stopped the camera can't clear them — the lift started "in collision"
+with the claw's own trail. Limits: things lower than 3 cm are not obstacles (the table cut), what the arm itself hides
 at that moment is unknown and MoveIt treats unknown as free.
 
 ### `planning_scene_setup`
