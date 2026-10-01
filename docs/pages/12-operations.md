@@ -69,6 +69,18 @@ container, full there — or *"under the arm"*: the camera can't see below the a
 it can't be checked (place elsewhere, or move the arm away first).
 `ros2 param set /qb_arm_vision/pick_executor check_place false` turns the check off for the next places.
 
+## Holding things: jog, spots and poses
+
+Control tab, with the cell running: **jog** moves the claw (and whatever it holds) in small straight steps — pick the
+step, click the direction (or tick *keyboard*: arrows, PgUp / PgDn, Q / E). To come back to a place, type a name under
+**spots & poses** and *save here as spot* (position) or *as pose* (position + orientation); *go* (click twice) takes
+the arm there. Exact values and dragging on a top view: Config → spots.
+
+```bash
+ros2 service call /qb_arm_vision/jog qb_arm_vision_interfaces/srv/Jog "{translation: {z: 0.005}}"
+ros2 service call /qb_arm_vision/go_to qb_arm_vision_interfaces/srv/GoTo "{name: 'solder spot', plan_only: true}"
+```
+
 ## Boundaries: where the camera looks, where the arm may never go
 
 **Editor** — **Config → boundaries** on the control page **http://192.168.1.171:8081**: a top view of the table

@@ -13,6 +13,8 @@ Source: `qb_arm_vision/qb_arm_vision/pick_executor.py`, parameters in `config/pi
 | `/qb_arm_vision/surface_map` | client (`SurfaceMap`, object_detector) | fresh height map of the place, to check it's free / how full a container is |
 | `/qb_arm_vision/release` | service `std_srvs/Trigger` | open the claw, detach and remove the held object (drop it) |
 | `/qb_arm_vision/home` | service `qb_arm_vision_interfaces/Home` | move the arm to its home pose (`plan_only` to only plan) |
+| `/qb_arm_vision/jog` | service `qb_arm_vision_interfaces/Jog` | a small straight step of the TCP (micro adjustment), see [Jog and go-to](#jog-and-go-to) |
+| `/qb_arm_vision/go_to` | service `qb_arm_vision_interfaces/GoTo` | move to a named spot / pose of qb_arm `config/spots.yaml` |
 | `/qb_arm_vision/save_home` | service `std_srvs/Trigger` | the arm's current pose becomes the home pose |
 | `/qb_arm_vision/objects` | subscription (latched) | the latest detection: objects by id |
 | `/joint_states` | subscription | current `claw_joint` (to wait for the claw) |
@@ -300,6 +302,9 @@ is called.
 | `place_distances` | `[0.10, 0.05]` | m, above the place: the straight way down starts here |
 | `retreat_distance` | 0.10 m | straight up afterwards |
 | `home_after_place` | true | then to the home pose (`home_file`: qb_arm `config/home.yaml`) |
+| `jog_velocity_scaling` | 0.05 | jog steps (a motion parameter, at most 0.3) |
+| `jog_max_step`, `jog_max_angle` | 0.05 m, 15° | largest jog per axis and request |
+| `spots_file` | qb_arm `config/spots.yaml` | named spots and poses for go-to |
 | `into_clearance`, `into_margin` | 0.01 m, 0.01 m | release height above a container's rim; both walls together |
 | `into_step`, `into_max_spots` | 0.02 m, 40 | grid of drop spots over the opening; all are checked, this many (emptiest first) go on to planning |
 | `next_to_gap` | 0.02 m | default gap between the outlines |
@@ -325,6 +330,26 @@ First real run (2026-09-30): tape roll picked 40 cm from the base, placed at (0.
 
 While an object is attached, poses where it would collide are invalid, including the start of any plan that begins
 with the object inside the table or the robot; release before planning elsewhere.
+
+## Jog and go-to
+
+The helping-hand basics: hold something where you want it, and nudge it.
+
+**Jog** (`/qb_arm_vision/jog`): `translation` (m, world frame) and `rotation` (rad, about the world x / y / z axes
+through the TCP: roll, pitch, yaw), each at most `jog_max_step` (5 cm) / `jog_max_angle` (15°) per axis. One
+straight Cartesian path from the current TCP pose (every 5 mm checked for collisions, cut at a joint jump), at
+`jog_velocity_scaling` (0.05, at most 0.3; Config → motion), carrying whatever the claw holds. All or nothing: a step
+that can't be done completely is refused with how far it would get and what it would touch (*"Jog −50 mm z blocked:
+only 50% … claw_left_finger–table"*). No octomap refresh before a jog (it would add 1.2 s to every step).
+
+**Go-to** (`/qb_arm_vision/go_to`): the spot or pose `name` (case-insensitive) from qb_arm's `config/spots.yaml`
+(launch argument `spots_file`, read at every call): a **spot** is a position — the TCP goes there and the claw keeps
+its current orientation; a **pose** is a position and an orientation (roll / pitch / yaw in degrees, extrinsic x-y-z in
+the world frame; claw straight down = roll 180, pitch 0). IK check first (*"out of reach"*), octomap refresh, a
+collision-free plan at the travel speed. Reached within ~1 mm / 0.3° in sim.
+
+Both, like pick / place / home: one motion at a time, servo mode and an active trajectory controller before a real
+motion, `plan_only` to only plan.
 
 ## Home
 

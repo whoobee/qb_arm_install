@@ -234,7 +234,7 @@ pick executor on every change), servo current, servo and ESP32 temperature (ambe
 | Cell | status, **start real / start sim / stop** (click twice to confirm), arm state / mode / error (code + meaning) / TCP, **recover arm** after a fault (clear error + warning, motors on, servo mode, ready; `/uf_api/*`), links (arm, claw, GPU server), services | `cell` script; `/ufactory/robot_states`; `ping`; `systemctl is-active` |
 | Claw | live servo current, angle, temperatures, supply voltage, Wi-Fi signal; charts (30 s, temperatures 5 min); **open / half / close / limp** | `/claw/*`; `/claw/command` (clamped to 0..0.96 rad: no squeezing), `/claw/torque` |
 | Control | a prompt + **detect**, the detection image, the objects. **Pick mode** (claw empty): click an object (image or list) → a menu at the mouse: plan / pick. **Place mode** (claw holds something): click an object → into / on / next to (side) it; click free table → place at that point (the pixel's ray meets the measured table plane); back where picked, release; plan home / home / save pose as home. Plan = shown in RViz; go = the real arm, click twice. A mission log of the results | `/qb_arm_vision/detect`, `/pick`, `/place`, `/release`, `/home`, `/save_home`, `/held`, `/debug_image`, `/objects`; `/kinect/rgb/camera_info` |
-| Config | a menu on the left: **motion** (below) and **boundaries** (vision / no-go zones on a top view of the table, below); later: current and temperature limits. Links: `#config/motion`, `#config/boundaries` (`#boundaries` still works) | `config/motion.yaml` + the pick executor's parameters; `config/boundaries.yaml` |
+| Config | a menu on the left: **motion** (below), **spots** (below) and **boundaries** (vision / no-go zones on a top view of the table, below); later: current and temperature limits. Links: `#config/motion`, `#config/boundaries` (`#boundaries` still works) | `config/motion.yaml` + the pick executor's parameters; `config/boundaries.yaml` |
 | Log | the cell log, colour-coded by level and node, local times, cell starts marked; filters: level, node, text search (highlighted), error / warning counters; the controller's 150 Hz overrun warnings are hidden (they were 796 of 800 lines) | `~/.ros/log/qb_arm_cell.log` |
 
 The arm moves only through the pick executor, when a pick or place is executed from the Control tab; the claw moves
@@ -250,6 +250,18 @@ in one atomic `set_parameters_atomically` call (it refuses out-of-range values i
 `config/motion.yaml`, loaded at every cell start; the next pick / place / home uses them. With the cell stopped (or an
 executor from before these parameters) it is saved only and applies at the next start. Where the running cell differs
 from the saved file, the page shows both.
+
+**Control → jog**: an x/y pad (forward = away from the robot, left = +y), up / down, turn (yaw), tilt (roll, pitch);
+steps of 1 / 5 / 10 / 50 mm and 1 / 5 / 15°; optionally the keyboard (↑ ↓ ← →, PgUp / PgDn, Q / E — not while typing);
+the TCP pose live. Every click moves at once, without the two-click confirm: the steps are small, straight, slow
+and collision-checked. **Control → spots & poses**: plan / go (go: click twice) per spot, and the current TCP saved as
+a new spot or pose by name.
+
+**Config → spots**: `config/spots.yaml` (`qb_arm/spots.py`: load / validate / write, shared with the pick executor).
+A top view around the robot (the camera image on request, a 10 cm grid, the ~44 cm reach, keep-out zones in red,
+the claw now) with a draggable marker per spot (green) or pose (violet, with its heading); a table with exact values
+(mm, degrees); *here* takes the current TCP; checked live (name, numbers, nothing inside a keep-out zone), saved with a
+backup of the old file; the next go-to uses it — no restart.
 
 **Config → boundaries**: a top view of the table (the colour image warped onto the table plane, 2.5 mm per pixel, x up /
 y left), vision zones (free quadrilaterals) and no-go zones (boxes: move, resize, heights, turn, name), checked
@@ -320,6 +332,7 @@ keep_out:                  # boxes the arm may never enter (MoveIt collision obj
 | `config/camera_pose.yaml` | camera pose in `world`: x, y, z, `up_in_camera` (tilt), `yaw` |
 | `config/obstacles.yaml` | `obstacle_cloud` (keyed `/**/obstacle_cloud`, it runs in `/kinect`) and `planning_scene_setup` parameters |
 | `config/table.yaml` | measured table plane (`measure_table`), keyed `/**` |
+| `config/spots.yaml` | named spots and poses for go-to (the control page's Config → spots, or the Control tab's *save here*) |
 | `config/motion.yaml` | pick executor speeds and pauses (the control page's Config → motion), over its `pick_executor.yaml` |
 | `config/home.yaml` | the arm's home pose (joint values): pick_executor goes there after every place; `save_home` writes it |
 | `config/sensors_3d.yaml` | MoveIt 3D sensor (octomap) configuration |

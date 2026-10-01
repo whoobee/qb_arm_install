@@ -47,6 +47,11 @@ flowchart LR
 
 In rough order of priority:
 
+0. **Helping hand / assistant** (2026-10-01): hold things while the user works (soldering) and hand over objects.
+   Milestone 1 done: jog (micro adjustments) and named spots / poses (Config → spots). Next: (2) locate the user's
+   hand from the ceiling camera (MediaPipe Hands + depth) and detect presence (slower speed when someone is in the
+   cell, the hand as an obstacle); (3) handover — bring the held object to the hand, release on a button / on a pull;
+   take an object from the hand; (4) "give me the tape", "hold this"; (5) hands-free commands (voice, foot pedal).
 1. **Grip sensing — measured and in use (2026-10-01).** Empty vs tape / thin cardboard / sponge, 3 trials each: the
    empty check uses stop position and holding current together (see [pick execution](06-pick-execution.md)). Next:
    re-check the empty baseline with a warm servo (~50 °C), then force control by current and a stall guard that
