@@ -104,9 +104,25 @@ for which steps 3–5 succeed is chosen; with `plan_only` the pick stops here (M
    with the remaining error: that is the grip force. The firmware's stall guard then reduces the push to 30 servo
    steps (see [claw firmware](10-qb_arm_gripper.md)). The estimated width is **not** used for closing (it once
    was, and a fallback turned a 13.8 mm wall into 81 mm, leaving the fingers 60 mm apart); it only sets the grasp
-   height. The stop position is logged as the gripped width. With `check_grip`, a claw that closes to within
-   `empty_margin` of fully closed counts as "nothing grasped": the claw opens and the pick ends without lifting.
-   **Off by default**, because the servo reads ~1.01 rad both empty and on a tape wall; it needs the INA219.
+   height. **Grip check** (`check_grip`, on; never in sim): once the fingers have settled (within 0.01 rad over
+   0.5 s, at most 2.5 s — a sponge gives way for ~2 s), the claw counts as **empty** only if the fingers went on to
+   `grip_empty_angle` (1.045 rad) or further **and** the mean servo current (INA219, `/claw/servo_current`, over
+   0.5 s) is at most `grip_empty_current` (540 mA). Then the claw opens and the pick fails with the numbers
+   (*"Nothing grasped …: fingers stopped at 1.066 rad …, holding 431 mA -> empty"*); otherwise the stop position
+   and current are logged with the grip. Without current data, position alone decides (with a warning).
+
+   Measured on the real claw (2026-10-01, closing to 1.2 rad, 3 trials each, servo 41–44 °C):
+
+   | | fingers stop | current passes 300 mA at | holding current | peak |
+   |---|---|---|---|---|
+   | empty | 1.066–1.072 rad | 1.068 rad (pads meeting) | 418–482 mA | 439–608 mA |
+   | tape roll (wall) | 0.960–0.966 rad | 0.89–0.94 rad | 610–633 mA | 1.06–1.63 A |
+   | thin cardboard | 1.005–1.027 rad | 0.87–0.99 rad | 592–712 mA | 756–877 mA |
+   | sponge | 0.904–0.921 rad | 0.78–0.80 rad | 567–580 mA | 1.49–1.88 A |
+
+   Holding current follows how far the fingers stop short of 1.2 rad (the servo pushes with the error), except on
+   soft objects, which give way. Position alone gets tight on thin objects (0.04 rad), current alone on soft ones
+   (574 vs ≤ 482 mA); together they separate all four. The peak (the impact) is too noisy to use.
 5. **Attach** the object to `link_tcp` (touch links = the claw links). From now on MoveIt carries it with the arm.
    Its contact with the `table` is allowed while it is held: standing on the tilted table, its level bottom can
    touch the table box by a fraction of a millimetre, which made the lift and every later plan start "in collision".
@@ -345,10 +361,13 @@ The eight motion parameters above are read at every motion (`ros2 param set` wor
 |---|---|---|
 | `planning_time` | 5.0 | s per plan |
 | `grip_target` | 1.2 | rad, claw command when gripping (past fully closed; clamped to 1.2) |
-| `check_grip`, `empty_margin` | false, 0.03 | fail the pick if the claw closes to within `empty_margin` of 0.96 (never in sim) |
+| `check_grip` | true | after closing, fail the pick (claw opened) if it looks empty (never in sim) |
+| `grip_empty_angle`, `grip_empty_current` | 1.045 rad, 0.54 A | empty = the fingers at this angle or further **and** holding current at most this |
+| `grip_settle_timeout`, `grip_current_window` | 2.5 s, 0.5 s | wait for the fingers to settle; current averaged over the window |
+| `claw_current_topic` | `/claw/servo_current` | the claw's INA219 servo current (A) |
 | `claw_joint`, `claw_links` | | names in the URDF |
 
-`grip_target`, `check_grip` and `empty_margin` are read at every pick: `ros2 param set /qb_arm_vision/pick_executor ...`
+`grip_target` and the grip-check parameters are read at every pick: `ros2 param set /qb_arm_vision/pick_executor ...`
 tunes them without a restart.
 
 ## Example session

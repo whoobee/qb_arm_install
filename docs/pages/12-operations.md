@@ -164,7 +164,7 @@ cd ~/prj/qb_arm_gripper && pio run -e gripper_ota -t upload
 | `Claw did not reach X rad` after closing | expected when gripping (the object stops the fingers) |
 | Claw topics missing | ESP32 not powered / not on Wi-Fi: `ping 10.42.0.10`, `iw dev wlxec750c316d15 station dump` (is it connected to `qbarm-claw`?), `nmcli con show --active` (is `qbarm-claw` up?); agent: `systemctl status ros2-microros-agent` |
 | `qbarm-claw` won't start: dnsmasq "address in use" | an orphaned dnsmasq from a crashed NetworkManager: `pgrep -a dnsmasq`, kill the one with `10.42.0.1`, `sudo nmcli con up qbarm-claw` |
-| "Nothing grasped" although the object was held | the empty check (`check_grip`) can't tell from servo position alone; keep it off until the INA219 is fitted |
+| "Nothing grasped" although the object was held | the reply gives the stop angle and holding current; compare with the measured table (pick execution → grip check) and adjust `grip_empty_angle` / `grip_empty_current` (`ros2 param set`, live), or `check_grip false` |
 | Claw doesn't move, but answers | servo supply off (voltage ~3.3 V instead of ~7.3 V) |
 | Detection fails / slow | GPU server: `curl http://hbh-ai.local:8770/health`; on hbh-ai `docker compose logs -f` |
 | `Overrun detected!` in the log | controller loop timing under CPU load (no real-time kernel); harmless unless constant |

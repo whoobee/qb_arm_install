@@ -38,7 +38,7 @@ flowchart LR
 | Documentation | This site, `http://192.168.1.171:8080`, with live status. |
 | Control page | `http://192.168.1.171:8081` (qb-arm-control.service): start / stop the cell, arm state, claw live data and charts, detection with a typed prompt, boundaries editor, log. |
 | Claw hardware + firmware | Mounted on the arm (20 mm plate, −45°), calibrated, micro-ROS over **qBArm's own access point** `qbarm-claw` (0 % loss, ~4 ms), OTA updates, servo heat guard. |
-| Grip | Closes to 1.2 rad (past pads-touching) and waits until the fingers stop; the servo pushes with the remaining error, limited by the firmware's stall guard. **No reliable "object held" signal yet**: servo position reads ~1.01 rad both empty and on a tape wall → INA219 current sensor ordered. |
+| Grip | Closes to 1.2 rad (past pads-touching) and waits until the fingers stop; the servo pushes with the remaining error, limited by the firmware's stall guard. Grip check from stop position + servo current (INA219), on since 2026-10-01: servo position reads ~1.01 rad both empty and on a tape wall → INA219 current sensor ordered. |
 | Place (set an object down) | Working on the real arm: at a point, on / into / next to a detected object → above the spot, straight down to the height at which it was grasped above the surface (+3 mm), open, straight up. Tape roll placed 2 mm / 12 mm from the target; tape roll and screwdriver placed into a bin. Height is computed, not felt (no current sensing yet). |
 | Soft boundaries | Built and tested on the real cell (no motion): `config/boundaries.yaml` — vision workspace (the detector blacks out everything else before detection; place spots outside refused) and keep-out zones (MoveIt collision boxes: IK, plans and straight lines refused, checked with a temporary test zone). **The desk/pc zones are a first proposal from the camera image, to be confirmed.** |
 | Place check (height map) | Built and tested against the real camera (plan only): every spot is checked in a fresh height map (7 depth frames, robot cut out) — free under the object and the open fingers, seen by the camera; into a container, room below the rim above the contents, emptiest spot first, fill reported. **Not yet run with a real place motion.** |
@@ -47,10 +47,10 @@ flowchart LR
 
 In rough order of priority:
 
-1. **Grip sensing — INA219 fitted (2026-09-30)** on I²C GPIO8/9, `/claw/servo_current` works (rest 9–35 mA, moving peaks 140–220 mA, empty claw pushed past closed ~440 mA). Once it's
-   in: measure the current idle, moving, closed empty and on an object; then "gripping" from current, force control
-   by current, and turn the empty-grasp check (`check_grip`) back on. Servo position can't do it: it reads ~1.01 rad
-   both empty and on a tape wall.
+1. **Grip sensing — measured and in use (2026-10-01).** Empty vs tape / thin cardboard / sponge, 3 trials each: the
+   empty check uses stop position and holding current together (see [pick execution](06-pick-execution.md)). Next:
+   re-check the empty baseline with a warm servo (~50 °C), then force control by current and a stall guard that
+   really limits the push (the firmware's is a no-op at 1.2 rad).
 2. **Claw drive train.** Check for slip between servo horn and gear (the servo turns ~0.2 rad more than the fingers
    move). Rubber pads on the fingers would add friction on smooth objects.
 3. **Place, next steps.** Relative placement and the height-map check are built; the check still needs a real
