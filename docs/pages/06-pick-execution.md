@@ -333,8 +333,16 @@ new one"*) instead of planned.
 | `pregrasp_distances` | `[0.10, 0.05]` | m, tried in order |
 | `lift_distance` | 0.10 | m |
 | `min_lift_distance` | 0.02 | m, a shorter lift is accepted |
-| `velocity_scaling` / `acceleration_scaling` | 0.2 / 0.2 | of the joint limits, free motion and lift |
-| `approach_velocity_scaling` | 0.05 | final straight approach |
+| `velocity_scaling` / `acceleration_scaling` | 0.2 / 0.2 | of the joint limits: free motion (pre-grasp, place, home) / every motion |
+| `approach_velocity_scaling` | 0.05 | straight approach to the grasp and way down to the place |
+| `lift_velocity_scaling` | 0.2 | straight lift after gripping, retreat after releasing |
+| `pause_before_grip`, `pause_after_grip` | 0, 0 | s at the grasp pose before closing; after closing, before the lift |
+| `pause_before_release`, `pause_after_release` | 0, 0 | s at the place before opening; after opening, before the retreat |
+
+The eight motion parameters above are read at every motion (`ros2 param set` works live; ranges 0.01–1 and 0–10 s are enforced) and set from qb_arm's `config/motion.yaml` (launch argument `motion_file`), which the control page's Config → motion writes.
+
+| Parameter | Default | Meaning |
+|---|---|---|
 | `planning_time` | 5.0 | s per plan |
 | `grip_target` | 1.2 | rad, claw command when gripping (past fully closed; clamped to 1.2) |
 | `check_grip`, `empty_margin` | false, 0.03 | fail the pick if the claw closes to within `empty_margin` of 0.96 (never in sim) |

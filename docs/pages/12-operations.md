@@ -5,7 +5,7 @@ Runbook for daily use: starting and stopping, picking, calibration, recovery, sa
 **The control page: http://192.168.1.171:8081** — start / stop the cell, watch the arm and the claw (temperatures,
 current, angle — always in the status bar), detect objects with a typed prompt, pick an object by clicking it and
 place it by clicking the target (a menu at the mouse: into / on / next to, or a point on the table; plan first, then
-execute), edit the boundaries, read the log with filters and search.
+execute), tune speeds and pauses and edit the boundaries (Config), read the log with filters and search.
 Everything below also works from a terminal.
 
 ## Safety rules
@@ -71,7 +71,7 @@ it can't be checked (place elsewhere, or move the arm away first).
 
 ## Boundaries: where the camera looks, where the arm may never go
 
-**Editor** — the **Boundaries** tab of the control page **http://192.168.1.171:8081**: a top view of the table
+**Editor** — **Config → boundaries** on the control page **http://192.168.1.171:8081**: a top view of the table
 made from the camera (the image projected onto the table plane, so rectangles are rectangles in robot coordinates;
 tall things look stretched). **+ vision zone** (green, drag its corners freely) / **+ no-go zone** (red box: drag
 to move, corners to resize; heights, turn and name in the side panel; the dashed outline is the MoveIt margin).

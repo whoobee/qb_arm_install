@@ -223,7 +223,7 @@ current state against the zones (an arm already inside one makes every plan fail
 `qb-arm-control.service` (installed by qb_arm_install, `--no-control` to skip) runs
 `scripts/control_center` permanently, independent of the cell: **http://192.168.1.171:8081**. Stdlib HTTP server +
 an rclpy node (`control_center`); the page is `web/control_center.html` (Vue 3, vendored in `web/vendor/`, so it works
-offline; a HUD style), the Boundaries tab is `web/boundary_editor.html` in a frame.
+offline; a HUD style), Config → boundaries is `web/boundary_editor.html` in a frame.
 
 **Status bar** (always visible): cell (real / sim / off), what the claw holds (`/qb_arm_vision/held`, published by the
 pick executor on every change), servo current, servo and ESP32 temperature (amber / red from 250 / 400 mA, 55 / 65 °C,
@@ -234,7 +234,7 @@ pick executor on every change), servo current, servo and ESP32 temperature (ambe
 | Cell | status, **start real / start sim / stop** (click twice to confirm), arm state / mode / error / TCP, links (arm, claw, GPU server), services | `cell` script; `/ufactory/robot_states`; `ping`; `systemctl is-active` |
 | Claw | live servo current, angle, temperatures, supply voltage, Wi-Fi signal; charts (30 s, temperatures 5 min); **open / half / close / limp** | `/claw/*`; `/claw/command` (clamped to 0..0.96 rad: no squeezing), `/claw/torque` |
 | Control | a prompt + **detect**, the detection image, the objects. **Pick mode** (claw empty): click an object (image or list) → a menu at the mouse: plan / pick. **Place mode** (claw holds something): click an object → into / on / next to (side) it; click free table → place at that point (the pixel's ray meets the measured table plane); back where picked, release; plan home / home / save pose as home. Plan = shown in RViz; go = the real arm, click twice. A mission log of the results | `/qb_arm_vision/detect`, `/pick`, `/place`, `/release`, `/home`, `/save_home`, `/held`, `/debug_image`, `/objects`; `/kinect/rgb/camera_info` |
-| Boundaries | vision / no-go zones on a top view of the table (below) | `config/boundaries.yaml` |
+| Config | a menu on the left: **motion** (below) and **boundaries** (vision / no-go zones on a top view of the table, below); later: current and temperature limits. Links: `#config/motion`, `#config/boundaries` (`#boundaries` still works) | `config/motion.yaml` + the pick executor's parameters; `config/boundaries.yaml` |
 | Log | the cell log, colour-coded by level and node, local times, cell starts marked; filters: level, node, text search (highlighted), error / warning counters; the controller's 150 Hz overrun warnings are hidden (they were 796 of 800 lines) | `~/.ros/log/qb_arm_cell.log` |
 
 The arm moves only through the pick executor, when a pick or place is executed from the Control tab; the claw moves
@@ -243,7 +243,15 @@ cell it starts, so RViz opens on qBArm's screen, and uses `KillMode=process` wit
 (`exec python3 …`, not `ros2 run`, a wrapper that stayed behind holding the port): restarting the control center
 never stops a running cell. No login — it is meant for the local network only.
 
-**Boundaries tab**: a top view of the table (the colour image warped onto the table plane, 2.5 mm per pixel, x up /
+**Config → motion**: travel speed, acceleration, approach speed, lift / retreat speed (fractions of the Lite6's joint
+limits; red above 0.5) and the pauses before / after the grip and before / after the release (0–10 s) — a slider and
+an exact value each, the pause sequence drawn as a timeline. **Apply & save** sets them on the running pick executor
+in one atomic `set_parameters_atomically` call (it refuses out-of-range values itself) and writes
+`config/motion.yaml`, loaded at every cell start; the next pick / place / home uses them. With the cell stopped (or an
+executor from before these parameters) it is saved only and applies at the next start. Where the running cell differs
+from the saved file, the page shows both.
+
+**Config → boundaries**: a top view of the table (the colour image warped onto the table plane, 2.5 mm per pixel, x up /
 y left), vision zones (free quadrilaterals) and no-go zones (boxes: move, resize, heights, turn, name), checked
 live with `boundaries.load`, previewed in the camera view (`image_outside` + `draw` on a fresh snapshot), saved with
 a backup of the old file, optionally with a cell restart.
@@ -312,6 +320,7 @@ keep_out:                  # boxes the arm may never enter (MoveIt collision obj
 | `config/camera_pose.yaml` | camera pose in `world`: x, y, z, `up_in_camera` (tilt), `yaw` |
 | `config/obstacles.yaml` | `obstacle_cloud` (keyed `/**/obstacle_cloud`, it runs in `/kinect`) and `planning_scene_setup` parameters |
 | `config/table.yaml` | measured table plane (`measure_table`), keyed `/**` |
+| `config/motion.yaml` | pick executor speeds and pauses (the control page's Config → motion), over its `pick_executor.yaml` |
 | `config/home.yaml` | the arm's home pose (joint values): pick_executor goes there after every place; `save_home` writes it |
 | `config/sensors_3d.yaml` | MoveIt 3D sensor (octomap) configuration |
 | `config/boundaries.yaml` | the vision workspace and the keep-out zones ([soft boundaries](#soft-boundaries)); plain YAML, not ROS parameters |
