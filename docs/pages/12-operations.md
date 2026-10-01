@@ -119,13 +119,18 @@ ros2 topic echo --once /ufactory/robot_states | grep -E "^(state|mode|err):"
 ```
 
 1. Look at the arm: what did it touch? Is it clear to move?
-2. Clear the error and move the arm clear (UFACTORY app, or manual mode) — **not** to the zero pose.
-3. The arm is now typically in mode 0; MoveIt needs servo mode 1. The next pick request sets it back automatically
+2. Clear the error: the control page's Cell tab → **recover arm** (click twice; an arm fault also shows as a red
+   *arm fault C…* chip in the status bar, with its meaning on the Cell tab). It clears the error and the warning,
+   turns the motors on and sets servo mode, state ready — the arm doesn't move; the driver re-activates the
+   trajectory controller once the arm is ready. Or: UFACTORY app / manual mode. If the arm has to be moved clear,
+   by hand or in the app — **not** to the zero pose.
+3. After the UFACTORY app the arm is typically in mode 0; MoveIt needs servo mode 1. The next pick request sets it back automatically
    (only when there is no arm error); `cell stop && cell start real` works too.
 4. Detect again before the next pick (objects may have moved).
 
 Known error codes: **C31** collision caused abnormal joint current; **C16** servo error joint 6 (fixed once by
-power-cycling the arm).
+power-cycling the arm); **C24** speed exceeds limit — travel speed 0.7 over Wi-Fi: a stalled control cycle is caught up in one step, which
+the arm sees as 2–3× the planned speed (keep the speeds low until the arm is wired, Config → motion).
 
 ## Calibration
 
