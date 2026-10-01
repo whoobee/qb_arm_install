@@ -52,6 +52,13 @@ In rough order of priority:
    hand from the ceiling camera (MediaPipe Hands + depth) and detect presence (slower speed when someone is in the
    cell, the hand as an obstacle); (3) handover — bring the held object to the hand, release on a button / on a pull;
    take an object from the hand; (4) "give me the tape", "hold this"; (5) hands-free commands (voice, foot pedal).
+   Hand tracking feasibility (2026-10-01): MediaPipe HandLandmarker (CPU, `~/prj/venvs/hands`) on the Kinect colour
+   image + aligned depth: 18 fps with the cell running, hand found in 99% of frames still / 81% moving, palm and
+   fingertip steady to 1–2 mm, a flat hand 28 mm above the table (correct). Weak spots: a fingertip the depth camera
+   sees behind the arm (fallback: palm depth + hand shape), the user's natural hand position (0.45–0.7 m) is at the
+   edge of the depth image (top right missing) and beyond the arm's reach (0.44 m), left/right labels unreliable from
+   above. Hand size as a depth estimate: useless from above. WFOV_2X2BINNED depth: wider, but no depth on most of the
+   dark table — stays NFOV_UNBINNED (`depth_mode` launch argument for experiments).
 1. **Grip sensing — measured and in use (2026-10-01).** Empty vs tape / thin cardboard / sponge, 3 trials each: the
    empty check uses stop position and holding current together (see [pick execution](06-pick-execution.md)). Next:
    re-check the empty baseline with a warm servo (~50 °C), then force control by current and a stall guard that
