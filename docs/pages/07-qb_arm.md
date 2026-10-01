@@ -225,7 +225,8 @@ current state against the zones (an arm already inside one makes every plan fail
 an rclpy node (`control_center`); the page is `web/control_center.html` (Vue 3, vendored in `web/vendor/`, so it works
 offline; a HUD style), Config → boundaries is `web/boundary_editor.html` in a frame.
 
-**Status bar** (always visible): cell (real / sim / off), what the claw holds (`/qb_arm_vision/held`, published by the
+**Status bar** (always visible): cell (real / sim / off), hands (count; amber = in view, red = near the arm; from
+`/qb_arm_vision/hands`), what the claw holds (`/qb_arm_vision/held`, published by the
 pick executor on every change), servo current, servo and ESP32 temperature (amber / red from 250 / 400 mA, 55 / 65 °C,
 80 / 90 °C), claw angle.
 

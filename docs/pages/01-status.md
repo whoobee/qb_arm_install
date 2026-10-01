@@ -59,6 +59,20 @@ In rough order of priority:
    edge of the depth image (top right missing) and beyond the arm's reach (0.44 m), left/right labels unreliable from
    above. Hand size as a depth estimate: useless from above. WFOV_2X2BINNED depth: wider, but no depth on most of the
    dark table — stays NFOV_UNBINNED (`depth_mode` launch argument for experiments).
+   **Milestone 2 started (2026-10-01): `hand_tracker` node** built and running with the cell (~18 fps,
+   /qb_arm_vision/hands + RViz markers, control page hands chip and panel); not yet tested live with hands.
+   **Plan for the next session (2026-10-02):**
+   1. Live test of the tracker (control page Control tab + RViz *Hands*): one hand, two hands, moving, a hand near the
+      arm; record /qb_arm_vision/hands for ~25 s → track stability (ids not switching), how often depth is carried
+      over, near-arm detection, latency; tune confirm_frames / lost_timeout / One Euro / tip_agreement.
+   2. Presence in motion planning: while a hand is present, a reduced speed limit (independent of Config → motion);
+      a hand near the arm → no new motion / stop (design first: a stop needs a fast path, not a 1 s poll).
+   3. The hands as obstacles in MoveIt (boxes / capsules around the hand landmarks, refreshed), except for the hand
+      during a deliberate handover.
+   4. Handover zone: where hands and arm meet (≤ ~0.40 m from the base, inside depth coverage); then milestone 3
+      (bring the held object to the hand, release on a button first, later on a pull via the claw current).
+   Also open: the hands' image overlay on the control page (needs a live camera view), the speed-cap question for
+   the jog / motion sliders while on Wi-Fi.
 1. **Grip sensing — measured and in use (2026-10-01).** Empty vs tape / thin cardboard / sponge, 3 trials each: the
    empty check uses stop position and holding current together (see [pick execution](06-pick-execution.md)). Next:
    re-check the empty baseline with a warm servo (~50 °C), then force control by current and a stall guard that

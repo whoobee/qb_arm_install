@@ -184,6 +184,7 @@ Interfaces between the components (real arm). `→` publishes/calls.
 | `/qb_arm_vision/scene_objects` | topic (latched) | `ObjectArray` | pick_executor → obstacle_cloud (the known objects, left out of the octomap) |
 | `/clear_octomap` | service | `std_srvs/Empty` | pick_executor → move_group (before every pick and place) |
 | `/qb_arm_vision/detect` | service | `qb_arm_vision_interfaces/Detect` | you → object_detector |
+| `/qb_arm_vision/hands`, `/hand_markers` | topics | `HandArray`, `MarkerArray` | hand_tracker → control center, RViz |
 | `/qb_arm_vision/objects` | topic (latched) | `ObjectArray` | object_detector → pick_executor |
 | `/qb_arm_vision/markers`, `/qb_arm_vision/debug_image` | topic (latched) | `MarkerArray`, `Image` | object_detector → RViz |
 | `/qb_arm_vision/surface_map` | service | `qb_arm_vision_interfaces/SurfaceMap` | pick_executor → object_detector |

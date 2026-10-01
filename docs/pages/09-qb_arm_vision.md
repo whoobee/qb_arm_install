@@ -187,6 +187,30 @@ string message
 Grasp grasp          # the grasp used
 ```
 
+## `hand_tracker`
+
+The user's hands from the ceiling Kinect, for the helping-hand features. MediaPipe HandLandmarker (CPU) on the colour
+image + the depth image nearest in time → `/qb_arm_vision/hands` (`HandArray`) and `/qb_arm_vision/hand_markers`
+(RViz *Hands*: palm sphere green = depth measured, amber = depth carried over, red = near the arm; bones; fingertips).
+Started with the cell (launch argument `hands`, default true); parameters in `config/hand_tracker.yaml`.
+
+- **Depth**: anchored on the palm (a 17×17 window, nearly always visible). Every other landmark uses its own depth
+  only within 3 cm (`tip_agreement`) of palm depth + MediaPipe's metric hand shape — else the depth camera (a few cm
+  beside the colour camera) sees the arm in front of a fingertip, and the estimate is used. No palm depth (edge of
+  the depth image): a tracked hand keeps its last depth (`depth_ok` false), a new one is skipped.
+- **Tracking**: by palm position (MediaPipe's left / right is unreliable from above); a new hand after 3 detections,
+  dropped after 0.5 s without one; a jump faster than 3 m/s is not the same hand; below the table − 3 cm: rejected.
+  One Euro filter (steady when still, little lag in motion); `velocity` from it.
+- **Per hand**: palm, fingertips, all 21 landmarks (world), their image coordinates, `arm_distance` (nearest
+  landmark to the arm's links as 4 cm segments, from TF). **Per frame**: `present` (a hand over the vision workspace
+  + 15 cm), `near_arm` (any hand within 15 cm), `rate`.
+- **Environment**: MediaPipe 1.x in `~/prj/venvs/hands` (venv with system site packages, numpy < 2, the system
+  OpenCV; model `models/hand_landmarker.task`) — `install.sh` step *hands* (`--no-hands` to skip). The node starts
+  under the system Python and re-executes itself there. Feasibility tools: `qb_arm_install/tools/hands/`
+  (`hand_probe.py`, `depth_check.py`).
+- **Measured** (2026-10-01): ~18 fps with the cell running (≈ 40 ms inference with a hand); still hand: palm and
+  fingertips steady to 1–2 mm, a flat hand 28 mm above the table; found in 99% of frames still, 81% moving.
+
 ## `claw.py`
 
 The claw's parallelogram geometry, shared by the detector (grasp heights) and the executor (closing angle), so they

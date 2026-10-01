@@ -20,6 +20,7 @@ DO_ESP=1
 DO_MICROROS=1
 DO_DOCS=1
 DO_CONTROL=1
+DO_HANDS=1
 DO_CLAW_AP=1
 GRIPPER_DIR="$HOME/prj/qb_arm_gripper"
 ACCEPT_K4A_EULA=0
@@ -48,6 +49,7 @@ Usage: ./install.sh [options]
   --no-microros-agent   skip the micro-ROS agent (build + ros2-microros-agent.service) for the gripper
   --no-docs             don't install the documentation server (qb-arm-docs.service, port 8080)
   --no-control          don't install the control center (qb-arm-control.service, port 8081)
+  --no-hands            skip the hand tracker's Python environment (MediaPipe, ~/prj/venvs/hands)
   --no-claw-ap          don't set up qbarm-claw, the access point for the claw (needs a USB Wi-Fi adapter)
   -h, --help            show this help
 EOF
@@ -69,6 +71,7 @@ while [ $# -gt 0 ]; do
         --no-microros-agent) DO_MICROROS=0 ;;
         --no-docs) DO_DOCS=0 ;;
         --no-control) DO_CONTROL=0 ;;
+        --no-hands) DO_HANDS=0 ;;
         --no-claw-ap) DO_CLAW_AP=0 ;;
         -h|--help) usage; exit 0 ;;
         *) echo "Unknown option: $1"; usage; exit 1 ;;
@@ -367,6 +370,21 @@ if [ $DO_CONTROL -eq 1 ]; then
     sudo systemctl enable qb-arm-control.service
     sudo systemctl restart qb-arm-control.service
     info "status: $(systemctl is-active qb-arm-control.service)"
+fi
+
+if [ "$DO_HANDS" = 1 ]; then
+    # qb_arm_vision hand_tracker: MediaPipe in its own venv (system site packages for ROS); mediapipe's own opencv
+    # needs numpy 2, which the system's numpy-1 builds (scipy, matplotlib, cv_bridge) can't load: numpy < 2 and the
+    # system OpenCV instead. The node re-executes itself in this venv.
+    step "Hand tracker environment (MediaPipe, ~/prj/venvs/hands)"
+    HANDS="$HOME/prj/venvs/hands"
+    python3 -m venv --system-site-packages "$HANDS"
+    "$HANDS/bin/pip" install -q mediapipe 'numpy<2'
+    "$HANDS/bin/pip" uninstall -q -y opencv-contrib-python opencv-python 2>/dev/null || true
+    mkdir -p "$HANDS/models"
+    [ -f "$HANDS/models/hand_landmarker.task" ] || curl -fsSL -o "$HANDS/models/hand_landmarker.task" \
+        https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task
+    "$HANDS/bin/python" -c "import mediapipe, numpy; print('mediapipe', mediapipe.__version__, 'numpy', numpy.__version__)"
 fi
 
 # ---------------------------------------------------------------------------
