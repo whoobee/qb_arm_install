@@ -193,6 +193,9 @@ The user's hands from the ceiling Kinect, for the helping-hand features. MediaPi
 image + the depth image nearest in time → `/qb_arm_vision/hands` (`HandArray`) and `/qb_arm_vision/hand_markers`
 (RViz *Hands*: palm sphere green = depth measured, amber = depth carried over, red = near the arm; bones; fingertips).
 Started with the cell (launch argument `hands`, default true); parameters in `config/hand_tracker.yaml`.
+While someone subscribes, it also publishes `/qb_arm_vision/camera_preview` (`CompressedImage`, JPEG 640 px wide,
+≤ 15 Hz: `preview_width`, `preview_rate`, `preview_quality`) — each processed frame, after that frame's hands, so a
+viewer (the control page's live view) can draw the hands exactly where they were found.
 
 - **Depth**: anchored on the palm (a 17×17 window, nearly always visible). Every other landmark uses its own depth
   only within 3 cm (`tip_agreement`) of palm depth + MediaPipe's metric hand shape — else the depth camera (a few cm
