@@ -25,7 +25,8 @@ flowchart TB
 ```
 
 Options: `--ws DIR`, `--https`, `--branch`, `--accept-k4a-eula`, `--no-upgrade`, `--no-kinect`, `--no-build`,
-`--no-bashrc`, `--no-discovery-server`, `--no-realtime`, `--no-esp`, `--no-microros-agent`, `--no-claw-ap`, `--no-docs`.
+`--no-bashrc`, `--no-discovery-server`, `--no-realtime`, `--no-esp`, `--no-microros-agent`, `--no-claw-ap`, `--no-docs`,
+`--dds-iface IFACE` (the one interface ROS uses; default: the interface of the default route).
 GitHub over SSH port 22 is flaky from qBArm; the scripts use `ssh://git@ssh.github.com:443/whoobee/<repo>.git`.
 
 ## System services (systemd)
@@ -67,12 +68,18 @@ export ROS_DOMAIN_ID=0
 export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 export ROS_DISCOVERY_SERVER="127.0.0.1:11811"
 export ROS_SUPER_CLIENT=TRUE          # CLI tools see the whole graph
+export FASTRTPS_DEFAULT_PROFILES_FILE=~/prj/ros2_ws/fastdds_qbarm.xml   # ROS over one interface (below)
 alias cb=...                          # colcon build + re-source
 alias kinect=...  qbarm=...           # partial launches
 alias cell=...                        # the cell process manager (use this)
 ```
 
-Other machines join with `ROS_DISCOVERY_SERVER=192.168.1.171:11811 ROS_SUPER_CLIENT=TRUE`.
+Other machines join with `ROS_DISCOVERY_SERVER=192.168.1.135:11811 ROS_SUPER_CLIENT=TRUE` (none do today).
+
+**One network interface for ROS** (`fastdds_qbarm.xml`, written by the installer): shared memory, loopback and the LAN
+cable only. With the Wi-Fi and the cable both on 192.168.1.0/24, every node advertised two addresses, discovery of
+service clients got slower and the controller manager's replies to the spawner were dropped (*failed to send response
+… (timeout)*): `lite6_traj_controller` stayed *unconfigured* on every cell start (2026-10-02).
 
 **Real-time**: the `realtime` group may use real-time priorities (`/etc/security/limits.d/99-realtime.conf`); the
 controller manager runs its 150 Hz loop with FIFO priority 50. The kernel is not PREEMPT_RT, so "Overrun detected!"
@@ -92,11 +99,21 @@ Use depth mode `NFOV_UNBINNED` (`WFOV_UNBINNED` at 30 fps crashes).
 
 | Host | Address | Ports |
 |---|---|---|
-| qBArm | 192.168.1.171 (Wi-Fi, DHCP) | UDP 11811 discovery, UDP 8888 micro-ROS, TCP 8080 docs, SSH |
+| qBArm | **192.168.1.135** (LAN cable `enx00e04c360283`, DHCP — reserve it in the router); 192.168.1.171 (Wi-Fi `wlp0s20f3`, backup) | UDP 11811 discovery, UDP 8888 micro-ROS, TCP 8080 docs, TCP 8081 control, SSH |
 | Lite6 controller | 192.168.1.23 | UFACTORY SDK |
 | hbh-ai | 192.168.1.220 | TCP 8770 vision server |
 | Claw ESP32 | 10.42.0.10 on `qbarm-claw` | UDP (micro-ROS client), TCP 3232 OTA |
 | `qbarm-claw` | 10.42.0.1/24 (qBArm, `wlxec750c316d15`) | DHCP/DNS (NetworkManager's dnsmasq) |
+
+**Wired LAN (2026-10-02).** qBArm has no Ethernet port; a USB-C hub/Ethernet combo (USB 2.0 hub `214b:7250` +
+Realtek RTL8152 `0bda:8152`, 100 Mbit) connects it to the router. Its udev rule `/etc/udev/rules.d/90-qbarm-usb-eth.rules`
+keeps USB autosuspend off (with it on, the adapter dropped out right after plugging in: *status -71*). The
+NetworkManager connection `qbarm-eth` routes the whole 192.168.1.0/24 over the cable (`ipv4.routes "192.168.1.0/24
+0.0.0.0 50"` — the DHCP address comes with *noprefixroute*, so without it the subnet stayed on the Wi-Fi) and has the
+default route (metric 100 < Wi-Fi 600). The Wi-Fi stays connected as a way in when the cable fails.
+Arm link, 1000 pings each: cable 0.98 ms average, 2.1 ms worst, 0.13 ms jitter; Wi-Fi 1.57 / 14.4 / 1.04 ms.
+ros2_control at 150 Hz, arm idle in servo mode: **2 overruns/min, longest loop 11.6 ms** on the cable against
+40.5/min and 118 ms on the Wi-Fi — the arm's micro-freezes came from Wi-Fi round trips (`read()` blocks per cycle).
 
 Name resolution for `.local` names via mDNS (avahi). Recommended: reserve qBArm's address in the router.
 

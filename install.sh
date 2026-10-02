@@ -24,6 +24,7 @@ DO_HANDS=1
 DO_CLAW_AP=1
 GRIPPER_DIR="$HOME/prj/qb_arm_gripper"
 ACCEPT_K4A_EULA=0
+DDS_IFACE=""                 # --dds-iface; default: the interface of the default route
 
 K4A_URL="https://packages.microsoft.com/ubuntu/18.04/prod/pool/main/libk"
 K4A_DEBS=(
@@ -51,6 +52,8 @@ Usage: ./install.sh [options]
   --no-control          don't install the control center (qb-arm-control.service, port 8081)
   --no-hands            skip the hand tracker's Python environment (MediaPipe, ~/prj/venvs/hands)
   --no-claw-ap          don't set up qbarm-claw, the access point for the claw (needs a USB Wi-Fi adapter)
+  --dds-iface IFACE     the one network interface ROS (Fast DDS) uses besides loopback / shared memory
+                        (default: the interface of the default route; on qBArm the LAN cable enx00e04c360283)
   -h, --help            show this help
 EOF
 }
@@ -73,6 +76,7 @@ while [ $# -gt 0 ]; do
         --no-control) DO_CONTROL=0 ;;
         --no-hands) DO_HANDS=0 ;;
         --no-claw-ap) DO_CLAW_AP=0 ;;
+        --dds-iface) DDS_IFACE="$2"; shift ;;
         -h|--help) usage; exit 0 ;;
         *) echo "Unknown option: $1"; usage; exit 1 ;;
     esac
@@ -226,6 +230,15 @@ fi
 step "ROS environment"
 sed "s#@WS@#$WS#" "$HERE/config/ros_env.sh.in" > "$WS/ros_env.sh"
 info "wrote $WS/ros_env.sh"
+# One interface for ROS: two on the same subnet (Wi-Fi + LAN) made service replies get lost (spawner -> unconfigured
+# trajectory controller, 2026-10-02)
+[ -n "$DDS_IFACE" ] || DDS_IFACE=$(ip -o route show default | awk '{m = 0; d = ""; for (i = 1; i < NF; i++) {
+    if ($i == "dev") d = $(i + 1); if ($i == "metric") m = $(i + 1) } print m, d}' | sort -n | head -1 | cut -d' ' -f2)
+sed "s#@IFACE@#${DDS_IFACE:-lo}#" "$HERE/config/fastdds_qbarm.xml.in" > "$WS/fastdds_qbarm.xml"
+info "wrote $WS/fastdds_qbarm.xml (ROS over ${DDS_IFACE:-lo only})"
+# USB-C hub/Ethernet combo of the wired LAN: no USB autosuspend (it dropped out right after plugging in)
+sudo install -m 644 "$HERE/config/90-qbarm-usb-eth.rules" /etc/udev/rules.d/90-qbarm-usb-eth.rules
+sudo udevadm control --reload
 if [ $DO_BASHRC -eq 1 ]; then
     line="source $WS/ros_env.sh"
     if grep -qxF "$line" ~/.bashrc; then

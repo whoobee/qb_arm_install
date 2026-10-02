@@ -13,6 +13,8 @@ export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 export ROS_DISCOVERY_SERVER="127.0.0.1:11811"
 # Super client: CLI tools (ros2 topic list, etc.) see the whole graph
 export ROS_SUPER_CLIENT=TRUE
+# Fast DDS: ROS traffic only over shared memory, loopback and one LAN interface (see the file; install.sh --dds-iface)
+[ -f "$ROS2_WS/fastdds_qbarm.xml" ] && export FASTRTPS_DEFAULT_PROFILES_FILE="$ROS2_WS/fastdds_qbarm.xml"
 
 source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash 2>/dev/null
 alias cb='(cd "$ROS2_WS" && colcon build --symlink-install) && source "$ROS2_WS/install/setup.bash"'

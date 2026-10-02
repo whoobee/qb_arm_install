@@ -73,8 +73,8 @@ In rough order of priority:
       during a deliberate handover.
    4. Handover zone: where hands and arm meet (≤ ~0.40 m from the base, inside depth coverage); then milestone 3
       (bring the held object to the hand, release on a button first, later on a pull via the claw current).
-   Done 2026-10-02: live camera video on the control page with the tracked hands drawn in. Also open: the speed-cap
-   question for the jog / motion sliders while on Wi-Fi.
+   Done 2026-10-02: live camera video on the control page with the tracked hands drawn in; the arm on a wired LAN
+   (overruns 40/min → 2/min, so the Wi-Fi speed-cap question is moot).
 1. **Grip sensing — measured and in use (2026-10-01).** Empty vs tape / thin cardboard / sponge, 3 trials each: the
    empty check uses stop position and holding current together (see [pick execution](06-pick-execution.md)). Next:
    re-check the empty baseline with a warm servo (~50 °C), then force control by current and a stall guard that
@@ -122,6 +122,7 @@ In rough order of priority:
 | 2026-09-30 | **Soft boundaries**: vision workspace + keep-out zones for the work desk, `show_boundaries`, the zone editor. |
 | 2026-09-30 | **Obstacle avoidance on** in the cell: known objects left out of the octomap, octomap refreshed before every pick and place. |
 | 2026-09-29 | First real picks: two crashes (see below), both fixed; `cell` script; **first successful real pick**. |
+| 2026-10-02 | **Wired LAN** (USB-C hub/Ethernet combo): arm link and ROS over the cable, Wi-Fi as backup; ROS limited to one interface (two on one subnet left the trajectory controller unconfigured). |
 | 2026-10-02 | **Camera moved** towards the user after an occlusion study; recalibrated; table plane from three claw touches (the 0.87° tilt was a calibration error). |
 
 ## Lessons learned (incidents and their fixes)

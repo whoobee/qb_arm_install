@@ -1,0 +1,4 @@
+# qBArm: USB-C hub/Ethernet combo (Huasheng hub 214b:7250 + Realtek RTL8152 0bda:8152) for the wired arm link.
+# No USB autosuspend: the adapter dropped out right after plugging in (status -71) with power control on auto.
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="214b", ATTR{idProduct}=="7250", TEST=="power/control", ATTR{power/control}="on"
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0bda", ATTR{idProduct}=="8152", TEST=="power/control", ATTR{power/control}="on"

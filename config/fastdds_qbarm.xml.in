@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- qBArm: Fast DDS default profile (FASTRTPS_DEFAULT_PROFILES_FILE in ros_env.sh). Written by qb_arm_install/install.sh (--dds-iface).
+
+     ROS traffic only over shared memory, loopback and the LAN cable (@IFACE@ - on qBArm the USB-C hub/Ethernet combo enx00e04c360283,
+     its name comes from its MAC, so it is stable). Not over the Wi-Fi (wlp0s20f3, same subnet, kept as a backup way
+     in) nor the claw's access point (10.42.0.1; the claw talks micro-ROS to the agent, not DDS).
+     Why only one: with the Ethernet up (2026-10-02) every participant advertised two addresses on 192.168.1.0/24, discovery of
+     service clients got slower, and the controller manager's replies to the spawner were dropped ("failed to send
+     response ... (timeout)") - lite6_traj_controller stayed unconfigured on every cell start. -->
+<dds xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+  <profiles>
+    <transport_descriptors>
+      <transport_descriptor>
+        <transport_id>qbarm_udp</transport_id>
+        <type>UDPv4</type>
+        <interfaceWhiteList>
+          <interface>lo</interface>
+          <interface>@IFACE@</interface>
+        </interfaceWhiteList>
+      </transport_descriptor>
+      <transport_descriptor>
+        <transport_id>qbarm_shm</transport_id>
+        <type>SHM</type>
+      </transport_descriptor>
+    </transport_descriptors>
+    <participant profile_name="qbarm_participant" is_default_profile="true">
+      <rtps>
+        <userTransports>
+          <transport_id>qbarm_shm</transport_id>
+          <transport_id>qbarm_udp</transport_id>
+        </userTransports>
+        <useBuiltinTransports>false</useBuiltinTransports>
+      </rtps>
+    </participant>
+  </profiles>
+</dds>
