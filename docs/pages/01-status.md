@@ -73,8 +73,29 @@ In rough order of priority:
       during a deliberate handover.
    4. Handover zone: where hands and arm meet (≤ ~0.40 m from the base, inside depth coverage); then milestone 3
       (bring the held object to the hand, release on a button first, later on a pull via the claw current).
-   Done 2026-10-02: live camera video on the control page with the tracked hands drawn in; the arm on a wired LAN
-   (overruns 40/min → 2/min, so the Wi-Fi speed-cap question is moot).
+   **Milestone complete (2026-10-02): camera view, live view and a stable wired cell.**
+   - Camera moved along the wall (x −0.38 → 0.41) after an occlusion study; recalibrated; the table plane comes from
+     three claw touches (flat within 0.16°; the old 0.87° tilt was a calibration error).
+   - Control page: live camera video (MJPEG) with the tracked hands drawn in; two-column layout without scrolling
+     on 1920×1080.
+   - Wired LAN (USB-C hub/Ethernet combo, 192.168.1.135): arm, ROS and the LAN over the cable, Wi-Fi .171 as backup;
+     ROS limited to that one interface. Arm link 0.85 ms; control-loop overruns 37–47/min (Wi-Fi) → 2.6/min (cable +
+     real-time priority, now also for cells started from the page).
+   - Detector pairs colour + depth within 5 ms; 16 MB shared-memory segments tried and reverted (camera crash).
+   - Start-up race (lost replies → trajectory controller unconfigured / inactive): spawner 8 s late + the pick
+     executor configures / activates the controller itself when the arm is ready.
+
+   **Open from this milestone:**
+   - Replace the controller spawner with an own starter (short timeouts, re-check the state, never re-configure):
+     its replies are still lost now and then (one start took 75 s), and its retry re-configures the controller,
+     which re-creates the action server — MoveIt then can't send trajectories ("Action client not connected",
+     MoveIt error −4) until the cell restarts.
+   - C24 "Speed Exceeds Limit" on free moves: the user limit-tests `velocity_scaling` 0.9 (Config → motion; the repo
+     default stays 0.5), now with real-time priority.
+   - Reserve 192.168.1.135 for MAC 00:e0:4c:36:02:83 in the router.
+   - From the new camera position the bin (behind the robot) is ~40 % visible: "into the bin" worked for the tape
+     roll, the bigger yellow box was refused by the free-spot check.
+   - Then continue with item 1 above (live test of the hand tracker).
 1. **Grip sensing — measured and in use (2026-10-01).** Empty vs tape / thin cardboard / sponge, 3 trials each: the
    empty check uses stop position and holding current together (see [pick execution](06-pick-execution.md)). Next:
    re-check the empty baseline with a warm servo (~50 °C), then force control by current and a stall guard that
