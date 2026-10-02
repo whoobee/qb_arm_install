@@ -84,7 +84,9 @@ shared-memory transport 16 MB segments: with the default 512 KB the Kinect's 3.7
 loopback, where about 3 in 4 were lost and the rest arrived ~220 ms late; now ~24 fps of colour and depth each.
 
 **Real-time**: the `realtime` group may use real-time priorities (`/etc/security/limits.d/99-realtime.conf`); the
-controller manager runs its 150 Hz loop with FIFO priority 50. The kernel is not PREEMPT_RT, so "Overrun detected!"
+controller manager runs its 150 Hz loop with FIFO priority 50. A cell started from the control page inherits the limits of
+`qb-arm-control.service`, not those of a login: the unit sets `LimitRTPRIO=99` and `LimitMEMLOCK=infinity` itself
+(until 2026-10-02 page-started cells ran the loop without real-time priority). The kernel is not PREEMPT_RT, so "Overrun detected!"
 warnings from the controller manager are loop-timing warnings under CPU load, not collisions.
 
 ## Forked third-party code

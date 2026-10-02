@@ -11,6 +11,11 @@ Environment=WAYLAND_DISPLAY=wayland-1
 Environment=DISPLAY=:0
 Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/@UID@/bus
 ExecStart=/bin/bash -c 'source @HOME@/prj/ros2_ws/ros_env.sh && exec python3 @HOME@/prj/ros2_ws/install/qb_arm/lib/qb_arm/control_center --port 8081'
+# The cell it starts runs ros2_control's 150 Hz loop with FIFO priority 50: allow real-time priority here - a system
+# service doesn't get the realtime group's limits (/etc/security/limits.d/99-realtime.conf applies to logins only),
+# so cells started from the page ran without it (2026-10-02: ~2-4x the control-loop overruns of a shell-started cell)
+LimitRTPRIO=99
+LimitMEMLOCK=infinity
 # (exec: the server itself is the main process - `ros2 run` would be a wrapper that KillMode=process leaves behind)
 # Only this server stops with the service - never a cell it started (the cell has its own process group)
 KillMode=process
