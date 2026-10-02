@@ -33,7 +33,7 @@ flowchart LR
 | Detection / segmentation / grasps (GPU server) | Working, ~3.7 s per request (Contact-GraspNet ~2.5 s of it). |
 | Grasp logic for the claw | Working: CGN grasps + ring (rim) grasps + narrow-slice grasps for flat/long objects + top-slice fallback, finger-landing check, closing-claw geometry, heights above the measured table plane. Picked: tape roll (rim), pliers (7 mm high, across the jaws). |
 | Pick executor | Working on the real arm: servo-mode check → pre-grasp → straight approach → close until the fingers stop → attach → lift; release. Puts the arm back into servo mode itself before every pick (arm errors are left to a person). |
-| Table model | Measured plane (tilted 0.87° against the robot base, 1.7 mm RMS) used for object heights, fingertip clearance (3 mm) and MoveIt's collision table. |
+| Table model | Plane from three claw touches (2026-10-02: flat against the robot base within 0.16°; the camera agrees within ~1.5 mm) used for object heights, fingertip clearance (3 mm) and MoveIt's collision table. |
 | Process management | `cell start sim\|real` / `cell stop`: one process group, clean starts and stops. |
 | Documentation | This site, `http://192.168.1.171:8080`, with live status. |
 | Control page | `http://192.168.1.171:8081` (qb-arm-control.service): start / stop the cell, arm state, claw live data and charts, detection with a typed prompt, boundaries editor, log. |
@@ -61,7 +61,9 @@ In rough order of priority:
    dark table — stays NFOV_UNBINNED (`depth_mode` launch argument for experiments).
    **Milestone 2 started (2026-10-01): `hand_tracker` node** built and running with the cell (~18 fps,
    /qb_arm_vision/hands + RViz markers, control page hands chip and panel); not yet tested live with hands.
-   **Plan for the next session (2026-10-02):**
+   **2026-10-02: camera moved** along the wall towards the user (x −0.38 → 0.41) after an occlusion study (hand zone
+   79 → 99 % visible, see [camera calibration](08-camera-calibration.md)); recalibrated, table plane from claw touches.
+   **Next:**
    1. Live test of the tracker (control page Control tab + RViz *Hands*): one hand, two hands, moving, a hand near the
       arm; record /qb_arm_vision/hands for ~25 s → track stability (ids not switching), how often depth is carried
       over, near-arm detection, latency; tune confirm_frames / lost_timeout / One Euro / tip_agreement.
@@ -120,6 +122,7 @@ In rough order of priority:
 | 2026-09-30 | **Soft boundaries**: vision workspace + keep-out zones for the work desk, `show_boundaries`, the zone editor. |
 | 2026-09-30 | **Obstacle avoidance on** in the cell: known objects left out of the octomap, octomap refreshed before every pick and place. |
 | 2026-09-29 | First real picks: two crashes (see below), both fixed; `cell` script; **first successful real pick**. |
+| 2026-10-02 | **Camera moved** towards the user after an occlusion study; recalibrated; table plane from three claw touches (the 0.87° tilt was a calibration error). |
 
 ## Lessons learned (incidents and their fixes)
 

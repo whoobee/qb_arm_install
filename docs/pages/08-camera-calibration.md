@@ -4,8 +4,26 @@ Every 3D position the perception pipeline computes is only as good as the **came
 *extrinsic calibration*): an error of 1° at 1.5 m distance moves everything on the table by 2.6 cm. This page
 describes how the pose is represented and the three tools that measured it.
 
-Result in use (2026-09-27): `x −0.380, y 0.571, z 1.475, yaw −0.6515 rad`, tilt 19.3° from straight down;
-**4.0 mm RMS** between the camera's view of the robot and the robot model.
+Result in use (2026-10-02, camera moved along the wall towards the user): `x 0.414, y 0.561, z 1.471,
+yaw −1.7153 rad`, tilt 19.3° from straight down; ICP 4.4 mm RMS against the robot model, then corrected
+(roll 0.18°, pitch 0.25°, z +5.9 mm) so that the camera's table matches three claw touches (see *Touch check* below).
+Before (2026-09-27): `x −0.380, y 0.571, z 1.475, yaw −0.6515 rad`, 4.0 mm RMS.
+
+**Why the camera moved (2026-10-02).** An offline occlusion study (arm + claw model rendered into a virtual Kinect,
+14 arm poses plus the user's working pose; validated against a real depth frame: silhouette IoU 0.64, depth axis and
+position matching the driver within 0.0° / 2 mm) compared positions along the wall (y ≈ 0.57, z ≈ 1.5):
+
+| Camera x | Table visible | Under the claw at pre-grasp | User's hand zone | Around the claw, user's pose |
+|---|---|---|---|---|
+| −0.38 (old) | 88 % | 86 % | 79 % (95 % re-aimed) | 80 % |
+| 0.00 | 89 % | 55 % | 97 % | 88 % |
+| 0.20 | 89 % | 41 % | 98 % | 90 % |
+| 0.40 | 88 % | 70 % | 99 % | 92 % |
+| 0.50 | 87 % | 86 % | 99 % | 92 % |
+
+Positions beside the work area are the worst for seeing under a top-down claw; from either end the camera looks in at
+a slant. Lowering the camera (to ~1.0 m) helps under the claw but costs the hand zone and raises the incidence angle
+on the dark table past 45°.
 
 ## Representation (`config/camera_pose.yaml`, `qb_arm/camera_pose.py`)
 
@@ -91,9 +109,27 @@ robust). Note: the user's first hand measurement had x and y swapped (robot X po
 
 Averages 10 depth frames (median per pixel), deprojects them into `world`, keeps points 12–55 cm from the base within
 3 cm of z = 0, and fits `z = a·x + b·y + c` by robust least squares (four rounds, dropping points more than 3× the
-median residual off). Result (2026-09-29): `a −0.01468, b −0.00354, c −0.00170`, 1.7 mm RMS: the table is tilted 0.87°
-against the robot base. `--apply` writes `config/table.yaml` (keyed `/**`), which `planning_scene_setup` (MoveIt's table
+median residual off). Result (2026-09-29): `a −0.01468, b −0.00354, c −0.00170`, 1.7 mm RMS: the table looked tilted 0.87°
+against the robot base — which turned out to be a camera calibration error (see the touch check). `--apply` writes `config/table.yaml` (keyed `/**`), which `planning_scene_setup` (MoveIt's table
 box, tilted to the plane) and the object detector (heights, fingertip clearance) read.
+
+### Touch check — the table from the arm itself (2026-10-02)
+
+The camera-based table depends on the camera calibration, and the ICP against the arm cannot separate a small tilt
+from a few cm of position when the arm is in one pose. Ground truth: jog the closed claw (pointing straight down)
+until the fingertips just touch the table, at three spots, and compute the lowest claw point from the joint states
+and the claw model:
+
+| Spot | Fingertip z (touch) | Old camera | New camera before correction |
+|---|---|---|---|
+| (0.18, 0.00) | +1.4 mm | −4.4 mm | −3.7 mm |
+| (0.41, 0.00) | +1.2 mm | −7.8 mm | −2.8 mm |
+| (0.19, 0.30) | +0.6 mm | −5.6 mm | −5.4 mm |
+
+The table is flat against the base within 0.16° (`table.yaml`: `a −0.00076, b −0.00273, c +0.00155`). Both camera
+calibrations put it 4–9 mm too low; the camera pose was rotated/raised so its table matches the touches
+(`measure_table` afterwards: within ~1.5 mm). The arm-mesh ICP alone still prefers the camera ~6–8 mm lower — most
+likely a time-of-flight bias between the shiny arm and the dark table; for picks the table is the reference that counts.
 
 ### Limits
 
