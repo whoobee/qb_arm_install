@@ -79,7 +79,9 @@ Other machines join with `ROS_DISCOVERY_SERVER=192.168.1.135:11811 ROS_SUPER_CLI
 **One network interface for ROS** (`fastdds_qbarm.xml`, written by the installer): shared memory, loopback and the LAN
 cable only. With the Wi-Fi and the cable both on 192.168.1.0/24, every node advertised two addresses, discovery of
 service clients got slower and the controller manager's replies to the spawner were dropped (*failed to send response
-… (timeout)*): `lite6_traj_controller` stayed *unconfigured* on every cell start (2026-10-02).
+… (timeout)*): `lite6_traj_controller` stayed *unconfigured* on every cell start (2026-10-02). The same profile gives the
+shared-memory transport 16 MB segments: with the default 512 KB the Kinect's 3.7 MB colour frames went over UDP
+loopback, where about 3 in 4 were lost and the rest arrived ~220 ms late; now ~24 fps of colour and depth each.
 
 **Real-time**: the `realtime` group may use real-time priorities (`/etc/security/limits.d/99-realtime.conf`); the
 controller manager runs its 150 Hz loop with FIFO priority 50. The kernel is not PREEMPT_RT, so "Overrun detected!"

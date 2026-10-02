@@ -21,6 +21,10 @@
       <transport_descriptor>
         <transport_id>qbarm_shm</transport_id>
         <type>SHM</type>
+        <!-- big enough for the Kinect's 3.7 MB colour frames (default 512 KB: they went over UDP loopback and most
+             of them were lost - the object detector rarely got a colour + depth pair of the same capture) -->
+        <segment_size>16777216</segment_size>
+        <maxMessageSize>8388608</maxMessageSize>
       </transport_descriptor>
     </transport_descriptors>
     <participant profile_name="qbarm_participant" is_default_profile="true">
