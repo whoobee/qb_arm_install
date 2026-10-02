@@ -13,7 +13,7 @@ qb_arm/
 ├── srdf/      qb_arm.srdf.xacro (MoveIt semantics: xArm + claw)
 ├── config/    claw.yaml, camera_pose.yaml, obstacles.yaml, sensors_3d.yaml
 ├── rviz/      qb_arm.rviz
-├── scripts/   cell, sim_ready_pose, claw_driver, obstacle_cloud, planning_scene_setup,
+├── scripts/   cell, controller_starter, sim_ready_pose, claw_driver, obstacle_cloud, planning_scene_setup,
 │              measure_camera_tilt, fit_camera_yaw, refine_camera_pose
 └── qb_arm/    camera_pose.py (Python module)
 ```
@@ -79,7 +79,8 @@ URDF/SRDF swapped in and reuses everything else from `xarm_moveit_config` / `xar
 4. Replace the robot description with `urdf/qb_arm.urdf.xacro` and the semantic description with
    `srdf/qb_arm.srdf.xacro`, passing the xArm xacro arguments through plus the claw arguments.
 5. Start: robot_state_publisher, the common MoveIt launch (`move_group` + RViz with `rviz/qb_arm.rviz`),
-   `ros2_control_node`, spawner for `lite6_traj_controller`; in sim also `joint_state_broadcaster`.
+   `ros2_control_node`, 8 s later `controller_starter` for `lite6_traj_controller` (in sim also
+   `joint_state_broadcaster`).
 6. Joint states: **real** arm → a `joint_state_publisher` merges `ufactory/joint_states` and `claw/joint_states` into
    `/joint_states`. **Sim** → the joint_state_broadcaster publishes `/joint_states` directly and the claw's state is
    remapped onto it.
@@ -160,12 +161,24 @@ group. Log: `~/.ros/log/qb_arm_cell.log`. Sources `ros_env.sh` itself when `ros2
 Stray patterns use the `[x]` regex trick (e.g. `[m]ove_group`) so `pgrep -f` never matches the script's own command
 line.
 
+### `controller_starter`
+
+Brings the ros2_control controllers up at the cell's start and exits, in place of controller_manager's spawner.
+While ~17 nodes register with the discovery server, the controller manager's replies to a just-started client get
+lost now and then (*failed to send response … (timeout)*). The spawner waited 60 s per lost reply; its retry either
+left the controller unconfigured ("already loaded") or configured it again — which re-creates the trajectory
+controller's action server, and MoveIt then can't send it trajectories (*Action client not connected*, error −4) until
+the cell restarts. The starter waits 3 s per reply, reads the states back after every call and takes the next step
+from the state: not loaded → load, unconfigured → configure, inactive → activate (at most 5 times: the arm's driver
+keeps it inactive while the arm has a fault). A configured controller is never configured again.
+`controller_starter <controller> ... [--timeout 120] [--call-timeout 3]`.
+
 ### `sim_ready_pose`
 
 The fake hardware starts with all joints at 0 — with the claw mounted, the claw is then *inside* the robot base and
 MoveIt refuses to plan (start state in collision). The node waits for the trajectory action, then sends the ready
 pose `[0, 0.1733, 0.555, 0, 0.3817, 0]` rad straight to the controller, **retrying until the goal is accepted**
-(the action server exists before the spawner activates the controller), and exits.
+(the action server exists before `controller_starter` activates the controller), and exits.
 
 ### `claw_driver` — simulated claw
 

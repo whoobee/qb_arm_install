@@ -82,14 +82,13 @@ In rough order of priority:
      ROS limited to that one interface. Arm link 0.85 ms; control-loop overruns 37–47/min (Wi-Fi) → 2.6/min (cable +
      real-time priority, now also for cells started from the page).
    - Detector pairs colour + depth within 5 ms; 16 MB shared-memory segments tried and reverted (camera crash).
-   - Start-up race (lost replies → trajectory controller unconfigured / inactive): spawner 8 s late + the pick
-     executor configures / activates the controller itself when the arm is ready.
+   - Start-up race (lost replies → trajectory controller unconfigured / inactive): qb_arm's own `controller_starter`
+     replaces the spawner (3 s per reply, reads the state back, never configures twice — the action server is created
+     once; controller active 15–18 s after a start), and the pick executor configures / activates the controller
+     itself when the arm is ready.
 
    **Open from this milestone:**
-   - Replace the controller spawner with an own starter (short timeouts, re-check the state, never re-configure):
-     its replies are still lost now and then (one start took 75 s), and its retry re-configures the controller,
-     which re-creates the action server — MoveIt then can't send trajectories ("Action client not connected",
-     MoveIt error −4) until the cell restarts.
+   - `controller_starter` in sim mode (with the `joint_state_broadcaster`) is not tested yet.
    - C24 "Speed Exceeds Limit" on free moves: the user limit-tests `velocity_scaling` 0.9 (Config → motion; the repo
      default stays 0.5), now with real-time priority.
    - Reserve 192.168.1.135 for MAC 00:e0:4c:36:02:83 in the router.
@@ -173,7 +172,7 @@ These are worth reading: each one changed the design.
 | 19 | Reviews of the place check and the boundaries found the checks too coarse in both directions (an unseen bin corner waved through, the arm's whole silhouette refused) and several ways to lose the keep-out zones silently (a typo `keepout:`, a failed scene setup) | Unseen cells were counted, not reasoned about; config errors were tolerated | Per-cell "how high could something hide here", counted per part; strict config validation, the table always added, the cell stops without its zones, the executor checks the zones are in MoveIt's scene before moving |
 | 20 | "Cannot lift it (0 cm possible)" after a good grasp; every place from there failed too | The held tape roll's model touched the table by 0.1 mm (the table is tilted 0.87°, the object's bottom is level): the arm's pose counted as a collision, and every plan must start collision-free | While an object is in the claw its contact with the table is allowed (the claw and arm stay checked) |
 | 21 | Still "cannot lift it (0 cm possible)" with the obstacle map on | The moving claw left ghost voxels in the octomap (camera frames and joint states not in step); stopped in them, the claw's pose counted as a collision | The obstacle cloud leaves the robot out generously (link boxes + 5 cm, a 10 cm cylinder around the claw and what it holds); the octomap is also refreshed before the lift and the retreat. A failing lift or retreat now names what it would touch |
-| 22 | "Trajectory controller is unconfigured / inactive" after most cell starts (2026-10-02 evening) | While ~17 nodes register with the discovery server, the controller manager's reply to the just-started spawner got lost (*failed to send response … (timeout)*): load → "already loaded" on the retry, configure → 60 s wait. Worse while the Wi-Fi and the new LAN cable were both on the same subnet (every node advertised two addresses) | ROS limited to one interface (`fastdds_qbarm.xml`); spawner started 8 s late (came up first time, 17 s after the start); the pick executor configures / activates the controller itself when the arm is ready |
+| 22 | "Trajectory controller is unconfigured / inactive" after most cell starts (2026-10-02 evening) | While ~17 nodes register with the discovery server, the controller manager's reply to the just-started spawner got lost (*failed to send response … (timeout)*): load → "already loaded" on the retry, configure → 60 s wait. Worse while the Wi-Fi and the new LAN cable were both on the same subnet (every node advertised two addresses) | ROS limited to one interface (`fastdds_qbarm.xml`); `controller_starter` instead of the spawner (its retry configured the controller again, which re-created the action server: MoveIt then failed with *Action client not connected* / error −4); the pick executor configures / activates the controller itself when the arm is ready |
 | 23 | Arm jitter and C24 "Speed Exceeds Limit" on fast free moves | Control-loop overruns: Wi-Fi round trips in `read()` (37–47/min) and, for cells started from the control page, no real-time priority (the service didn't allow it) | Wired LAN (cable + RT idle: 2.6/min); `LimitRTPRIO=99` in `qb-arm-control.service`. C24 at `velocity_scaling` 0.9 still being limit-tested |
 | 24 | Kinect driver: "Failed to poll cameras" (first ever) | 16 MB shared-memory segments, tried the same evening so the 3.7 MB colour frames go through shared memory — the driver's publishing stalled | Reverted to the default segments; the detector pairs colour + depth within 5 ms instead of by equal stamps (they differ by ~10 µs) |
 
