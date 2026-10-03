@@ -364,7 +364,11 @@ The home pose is a set of joint values in qb_arm's `config/home.yaml` (launch ar
 move home and checked against the joint limits. Default: the ready pose, TCP at (0.200, 0.000, 0.088), claw pointing
 down. After every successful place and retreat the arm goes home (`home_after_place`, default true, live); if no
 collision-free way home is found the place still succeeds and the reply says *"not home: …"*. The ±2π joints (1, 4, 6)
-go to the equivalent angle nearest to where they are, so the arm never unwinds a full turn to get home.
+go to the equivalent angle nearest to where they are, so the arm doesn't unwind a full turn to get home — but always at
+least 5° inside their limits (`LIMIT_MARGIN`): aimed at exactly +360°, joint 4 stopped there with C23 (*joint angle
+exceed limit*). A joint up to 0.5° past its limit (`JOINT_LIMIT_SLACK`: where such a stop leaves it, or rounding) is
+planned from the limit; further out, home / go-to / jog say which joint and by how much instead of "no collision-free
+way".
 
 `/qb_arm_vision/save_home` (control page: **save pose as home**) writes the arm's current pose to `home.yaml`: jog the
 arm to where it should rest (out of the camera's way), then save.
