@@ -81,6 +81,33 @@ ros2 service call /qb_arm_vision/jog qb_arm_vision_interfaces/srv/Jog "{translat
 ros2 service call /qb_arm_vision/go_to qb_arm_vision_interfaces/srv/GoTo "{name: 'solder spot', plan_only: true}"
 ```
 
+## Handing objects over: give and hold this
+
+Control tab, claw panel, with the cell running and the hand tracker on (the live view shows your hands):
+
+- **give to me** (click twice; the claw holds something): hold your hand out still in front of the arm, 34–75 cm from
+  its base, not over the desk. The arm comes slowly and stops with the object ~10 cm in front of your palm. Take it:
+  it opens once your hand has been at the object for 1 s, or as soon as you pull on it. Then it backs off and goes home.
+- **hold this** (click twice; the claw is empty): hold the object out still. The claw opens and comes to ~10 cm in front
+  of your palm. Put the object between the fingers and **keep holding it**, your fingers at least 4 cm clear of the
+  claw (hold it by its far end): it closes after 0.5 s. Small objects, or the camera can't see between the fingers:
+  press **close now**. It holds still 1 s — let go — then backs off and goes home holding it (`handed_1`, `handed_2`, …).
+  Afterwards: **give to me** gives it back; click a spot or an object in the image to put it there (*back where picked*
+  doesn't exist for it).
+- **stop** stops the arm where it is. It also stops by itself when a hand comes within 5 cm of the arm. When your hand
+  moves or the camera loses it, it pauses and goes on once your hand is still again (at most 3 times).
+- **plan give** / **plan take** only plan the way to your hand (RViz).
+
+```bash
+ros2 service call /qb_arm_vision/handover qb_arm_vision_interfaces/srv/Handover "{action: take, plan_only: false}"
+ros2 service call /qb_arm_vision/close std_srvs/srv/Trigger     # during a take: close now
+ros2 service call /qb_arm_vision/stop std_srvs/srv/Trigger      # stop where it is
+```
+
+Messages: *"No hand to take from / to give to"* — no hand was still in the zone within 15 s (the live view shows whether
+the camera sees it). *"Your hand at (…) is out of the arm's reach"* — no natural, collision-free pose in front of it;
+the reply says what blocked it. *"Nothing to hold within 30 s"* / *"Nobody took … within 30 s"* — it went home.
+
 ## Boundaries: where the camera looks, where the arm may never go
 
 **Editor** — **Config → boundaries** on the control page **http://192.168.1.171:8081**: a top view of the table

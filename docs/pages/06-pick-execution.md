@@ -1,7 +1,8 @@
 # Pick execution
 
 How `pick_executor` turns a detected object and its grasps into arm and claw motion, how `place` sets it down
-(after checking the spot in a fresh height map) and how `release` ends a pick.
+(after checking the spot in a fresh height map), how `release` ends a pick and how the arm hands objects to the user's
+hand and takes them from it ([handover](#handover-give-and-take)).
 Source: `qb_arm_vision/qb_arm_vision/pick_executor.py`, parameters in `config/pick_executor.yaml`.
 
 ## Interfaces
@@ -16,6 +17,12 @@ Source: `qb_arm_vision/qb_arm_vision/pick_executor.py`, parameters in `config/pi
 | `/qb_arm_vision/jog` | service `qb_arm_vision_interfaces/Jog` | a small straight step of the TCP (micro adjustment), see [Jog and go-to](#jog-and-go-to) |
 | `/qb_arm_vision/go_to` | service `qb_arm_vision_interfaces/GoTo` | move to a named spot / pose of qb_arm `config/spots.yaml` |
 | `/qb_arm_vision/save_home` | service `std_srvs/Trigger` | the arm's current pose becomes the home pose |
+| `/qb_arm_vision/handover` | service `Handover` | `{action: give \| take, plan_only}`: hand the held object to the user's hand / take one from it |
+| `/qb_arm_vision/stop` | service `std_srvs/Trigger` | stop a running handover where it is (cancels the trajectory controller's goals) |
+| `/qb_arm_vision/close` | service `std_srvs/Trigger` | during a take: close the claw now |
+| `/qb_arm_vision/hands` | subscription | the tracked hands (`hand_tracker`) |
+| `/ufactory/joint_states` | subscription (during a give) | the arm's joint torques: a pull on the held object |
+| `/kinect/depth/image_raw` + `camera_info` | subscription (during a take) | what is between the open fingers; the taken object's size |
 | `/qb_arm_vision/objects` | subscription (latched) | the latest detection: objects by id |
 | `/joint_states` | subscription | current `claw_joint` (to wait for the claw) |
 | `/claw/command` | publisher | claw target angle |
@@ -365,6 +372,89 @@ A save is refused while the arm's joint states aren't in yet (right after a cell
 any pose MoveIt finds in collision; a home pose in collision is reported (*"The home pose … is in collision …: save a
 new one"*) instead of planned.
 
+## Handover: give and take
+
+The helping hand passes objects to the user's hand (**give**) and takes them from it (**take**, *hold this*). The hands
+come from the camera: `hand_tracker` publishes every tracked hand on `/qb_arm_vision/hands` (21 landmarks in the
+world frame, ~10 Hz, ~0.1 s late). Both directions share the way to the hand; source `pick_executor.py` (`give`,
+`take`, `approach_hand`, `plan_approach`), the geometry in `handover.py` and `claw.py`.
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant C as Camera (hands)
+    participant E as pick_executor
+    participant A as Arm + claw
+    U->>C: holds a hand still in front of the arm
+    E->>C: a still hand in the handover zone? (nearest to the robot)
+    E->>E: leave the hand out of the octomap, find a pose 10 cm in front of the palm, plan
+    E->>A: move there (last 10 cm straight), watched every 30 ms
+    alt give
+        U->>A: hand at the object for 1 s, or a pull on it
+        E->>A: open, back off, home
+    else take
+        U->>A: puts the object between the open fingers, hand clear of them
+        E->>A: close after 0.5 s (or "close now"), measure the object, hold still 1 s, back off, home
+    end
+```
+
+**Finding the hand.** A hand held still (under 10 cm/s for 0.5 s, within `handover_find_time`, 15 s) in the
+**handover zone**: 34–75 cm from the base axis, −3 to 60 cm high, not over a keep-out zone (the desk with the mouse
+hand). With several, the one nearest to the robot.
+
+**Where the claw goes.** The held object's centre (give) or the open claw's centre (take) goes `handover_standoff`
+(10 cm) in front of the palm, towards the robot — at most `handover_max_reach` (50 cm) and at least 30 cm from the
+base, at the palm's height (above the table by the object's size). Tried in order: the claw's tilt
+(`handover_pitch` 34° below the horizontal, then 52°, 69°, 90°, 17°, level), five distances, two wrist sides, the last
+`handover_approach` (10 cm) straight along the claw or from above. Only **natural arm configurations** (the shoulder
+not leaning back more than 10°, the forearm roll within ±120°): MoveIt's model found turned-over poses near the base
+collision-free, the arm's controller stopped them with C22 (self-collision). The first leg goes to exactly the checked
+joint values; the straight leg is planned from where the first one really ends.
+
+**The hand in the octomap.** Without care, the user's own hand blocks every pose near it. Before planning, the hand,
+the spots in front of it and the held object are published as zones that the obstacle cloud leaves out; 0.8 s later
+(`octomap_mask_delay`: camera frames already on their way still contain the hand) the octomap is cleared and rebuilt.
+
+**Watched motion.** Every 30 ms during the approach:
+
+| Seen | Then |
+|---|---|
+| any hand within 5 cm of the arm (`link_base`…`link6` as 4 cm capsules) | stop |
+| the stop service (control page **stop**) | stop |
+| the hand moved 8 cm, left, or no hand data for 0.5 s | stop; pause until a hand is still again and re-plan towards it (at most 3 times) — unless the hand is already at the object (give) / at the claw (take): then carry on from where the arm stopped |
+
+A stop cancels the trajectory controller's goals directly (MoveIt's own cancel did not stop the execution): the arm
+stands within ~0.1 s, where it is.
+
+### Give
+
+**Release** when a hand has been within `handover_release_distance` (5 cm) of the held object's box for
+`handover_release_delay` (1 s) — or on a **pull**: the arm's joint torques (joints 2–6, `/ufactory/joint_states`,
+150 Hz) off their resting values by `handover_pull_torque` (0.8 Nm) for `handover_pull_time` (0.15 s). Measured: noise
+~0.01 Nm, gentle pulls 1.8–3.2 Nm; the pull is the backup when the claw hides the fingers from the camera. Then: open,
+detach, back off along the approach, home. Nobody takes it within `handover_wait` (30 s): back off, home, still holding.
+
+### Take (hold this)
+
+The claw opens, comes to the hand open and waits. It **closes** when, for `take_close_delay` (0.5 s) without a break:
+
+- the depth image shows **something between the open fingers**: at least `take_min_points` (25) points in a box between
+  the pads (link_tcp frame: x ±2 cm, y ±2.4 cm, z −1.2…+3 cm), the claw's own parts left out, in 3 checks in a row; and
+- **every hand the camera sees is clear of the claw**: all landmarks at least `take_hand_clear` (4 cm) from where the
+  closing claw can pinch (x ±1 cm, y ±4.6 cm, z −3…+3.1 cm). A hand the camera doesn't see does not count as clear.
+
+— or on **close now** (`/qb_arm_vision/close`). So: hold the object by its far end and keep holding it until the claw
+closes. The grip check is the pick's: closed on nothing → open again and wait on. The **object is measured** in a new
+depth frame: the points connected (5 mm voxels) to what is between the pads — leaving out the claw's own parts (its
+fingers and linkage from the meshes, at the claw's angle, +8 mm), the table and anything within 3.5 cm of a hand — give
+a box in the claw's frame (+8 mm: the camera sees one side). Not seen: a 4 cm box. The box is added to MoveIt and
+attached as `handed_N`. The arm holds still `take_hold_still` (1 s) while you let go, backs off, goes home.
+
+A taken object is held like a picked one: **give** hands it back (its centre, not the TCP, 10 cm in front of the
+palm); **place** sets it down as if it had been picked from above (the claw straight down, the box upright under it) —
+"back where it was picked" is refused, it has no such place. Nothing put in within `handover_wait`: back off, home,
+claw open.
+
 ## Parameters
 
 | Parameter | Default | Meaning |
@@ -394,6 +484,25 @@ The eight motion parameters above are read at every motion (`ros2 param set` wor
 
 `grip_target` and the grip-check parameters are read at every pick: `ros2 param set /qb_arm_vision/pick_executor ...`
 tunes them without a restart.
+
+Handover parameters, read at every handover (`ros2 param set` applies to the next one; ranges enforced):
+
+| Parameter | Default | Meaning |
+|---|---|---|
+| `handover_velocity_scaling` | 0.15 | of the joint velocity limits: the moves towards the hand and back (at most 0.3) |
+| `handover_approach_velocity_scaling` | 0.04 | the last straight bit to the hand and the retreat from it |
+| `handover_standoff` | 0.10 | m: the object (give) / the open claw (take) stops this far in front of the palm |
+| `handover_approach` | 0.10 | m of straight line at the end of the move to the hand |
+| `handover_pitch` | 0.6 | rad: the claw's tilt below the horizontal tried first |
+| `handover_max_reach` | 0.50 | m from the base axis |
+| `handover_release_distance`, `handover_release_delay` | 0.05, 1.0 | give: a hand this close to the object's box this long → open |
+| `handover_pull_torque`, `handover_pull_time` | 0.8, 0.15 | give: a pull of this many Nm (joints 2–6) this long → open (0 = off) |
+| `handover_wait`, `handover_find_time` | 30, 15 | s at the hand; s to find a still hand |
+| `handover_stop_distance`, `handover_hand_moved` | 0.05, 0.08 | m: a hand this close to the arm → stop; the target hand moved this far → pause |
+| `take_hand_clear` | 0.04 | m: every seen hand this far from where the claw pinches = clear |
+| `take_close_delay`, `take_min_points` | 0.5, 25 | take: object seen + hands clear this long → close; depth points that count as an object |
+| `take_hold_still` | 1.0 | s the arm holds still after closing (you let go) |
+| `octomap_mask_delay` | 0.8 | s between leaving the hand out of the octomap and clearing it |
 
 ## Example session
 

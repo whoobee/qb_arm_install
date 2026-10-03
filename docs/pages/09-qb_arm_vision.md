@@ -11,6 +11,8 @@ qb_arm_vision/
 │   ├── qb_arm_vision/object_detector.py
 │   ├── qb_arm_vision/pick_executor.py
 │   ├── qb_arm_vision/claw.py     claw geometry shared by both nodes
+│   ├── qb_arm_vision/handover.py handover geometry (hands, the claw's pose at the hand, pulls), no ROS
+│   ├── qb_arm_vision/hand_tracker.py
 │   ├── config/object_detector.yaml, pick_executor.yaml
 │   └── launch/object_detector.launch.py   (both nodes, namespace qb_arm_vision)
 └── qb_arm_vision_interfaces/     messages and services (ament_cmake)
@@ -185,7 +187,17 @@ bool plan_only       # only plan (shown in RViz), don't move
 bool success
 string message
 Grasp grasp          # the grasp used
+
+# srv/Handover.srv — hand the held object to the user's hand (give) or take one from it (take)
+string action        # 'give' or 'take'
+bool plan_only       # only plan the way to the hand (shown in RViz), don't move
+---
+bool success
+string message
 ```
+
+During a handover `/qb_arm_vision/stop` (`std_srvs/Trigger`) stops the arm where it is, and during a take
+`/qb_arm_vision/close` closes the claw now; see [pick execution](06-pick-execution.md#handover-give-and-take).
 
 ## `hand_tracker`
 
@@ -226,6 +238,14 @@ can't disagree. Values from `qb_arm/urdf/qbag.xacro`: the crank vector from the 
 | `claw_angle(gap)` | inverse of `claw_gap` by bisection over 0..0.96 (40 iterations; the gap shrinks monotonically) |
 | `finger_drop(a)` | `−CY·sin a + CZ·(cos a − 1)` — how much further along the approach the fingers are than when open |
 | `DROP_CLOSED` | `finger_drop(0.96)` = 18.8 mm |
+| `inside_claw(points, a, margin)` | which points (link_tcp frame) lie on the claw's own parts at `claw_joint = a`: the fingers with their pads (moved in and forward with `a`) and the linkage plates between them (their top rises from −21.5 to −3.4 mm while closing), measured on the meshes; `margin` 8 mm, 3 mm on the gripping faces |
+| `pinch_distance(points)` | distance from where the closing claw can pinch: x ±1 cm, y ±4.6 cm, z −3…+3.1 cm (take: is every hand clear?) |
+
+`handover.py` holds the handover geometry without ROS: the claw's rotation at the hand (`claw_rotation`), the target
+spots in front of the palm (`handover_targets`), the handover zone (`in_zone`), a hand's distance from the arm
+(`arm_distance`, links as capsules) and from a box (`box_distance`), natural arm configurations
+(`natural_configuration`), `Dwell` (how long a condition has held), `PullDetector` (a pull from the joint torques) and
+`connected` (depth points connected to a seed through occupied voxels: the object in the claw).
 
 ## `object_detector` parameters (`config/object_detector.yaml`)
 

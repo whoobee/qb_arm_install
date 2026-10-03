@@ -1,6 +1,6 @@
 # Project status
 
-*State on 2026-09-30.*
+*State on 2026-10-03.*
 
 ## Where we are
 
@@ -8,7 +8,9 @@
 cell computes a grasp for the claw, MoveIt plans the motion, the Lite6 executes it, the claw closes and the arm lifts
 the object; `place` sets it down at a point, on, into or next to another object — after checking in a fresh height
 map from the camera that the spot is free (or `release` just opens the claw). Picked so far: a **tape roll** lying flat (gripped across its rim) and a
-pair of **pliers** only ~7 mm high (gripped across the jaws). Every link of the chain has run on the real arm:
+pair of **pliers** only ~7 mm high (gripped across the jaws). Since 2026-10-03 it also **hands objects to the user's
+hand and takes them from it** (give / hold this), with the hands tracked by the camera. Every link of the pick chain
+has run on the real arm:
 
 ```mermaid
 flowchart LR
@@ -41,6 +43,7 @@ flowchart LR
 | Grip | Closes to 1.2 rad (past pads-touching) and waits until the fingers stop; the servo pushes with the remaining error, limited by the firmware's stall guard. Grip check from stop position + servo current (INA219), on since 2026-10-01: servo position reads ~1.01 rad both empty and on a tape wall → INA219 current sensor ordered. |
 | Place (set an object down) | Working on the real arm: at a point, on / into / next to a detected object → above the spot, straight down to the height at which it was grasped above the surface (+3 mm), open, straight up. Tape roll placed 2 mm / 12 mm from the target; tape roll and screwdriver placed into a bin. Height is computed, not felt (no current sensing yet). |
 | Soft boundaries | Built and tested on the real cell (no motion): `config/boundaries.yaml` — vision workspace (the detector blacks out everything else before detection; place spots outside refused) and keep-out zones (MoveIt collision boxes: IK, plans and straight lines refused, checked with a temporary test zone). **The desk/pc zones are a first proposal from the camera image, to be confirmed.** |
+| Handover (give / hold this) | Give: worked on the real arm 5 times (2026-10-03) — to a hand held still, released on the hand at the object (1 s) or on a pull (arm joint torques); stops on a hand near the arm, pauses and resumes when the hand moves. Take: built and sim-tested (7 scenarios), **not yet run on the real arm**. |
 | Place check (height map) | Built and tested against the real camera (plan only): every spot is checked in a fresh height map (7 depth frames, robot cut out) — free under the object and the open fingers, seen by the camera; into a container, room below the rim above the contents, emptiest spot first, fill reported. **Not yet run with a real place motion.** |
 
 ## What is open
@@ -95,6 +98,27 @@ In rough order of priority:
    - From the new camera position the bin (behind the robot) is ~40 % visible: "into the bin" worked for the tape
      roll, the bigger yellow box was refused by the free-spot check.
    - Then continue with item 1 above (live test of the hand tracker).
+
+   **Milestone (2026-10-03): handover — give and take.** See [pick execution](06-pick-execution.md#handover-give-and-take).
+   - **Give**: the arm brings the held object to a hand held still (the one nearest to the robot), 10 cm in front of
+     the palm, slowly; it opens when the hand has been at the object for 1 s, or on a pull (joint torques of the arm,
+     0.8 Nm for 0.15 s). Worked on the real arm (08:16, 08:18, 08:20, 12:38, 14:13).
+   - **Take (hold this)**: the claw comes to the hand open; it closes once the camera sees something between the fingers
+     and every hand clear of the claw for 0.5 s (or on *close now*); the object is measured in the depth image and held
+     as `handed_N` — give it back or place it like a picked one.
+   - Safety: watched every 30 ms — a hand within 5 cm of the arm or the stop button stops it within ~0.1 s (the
+     trajectory controller's goals are cancelled); the hand moving / leaving / the tracker's gaps pause it, then it
+     re-plans (up to 3 times). Natural arm configurations only (the controller's C22), the user's hand left out of the
+     octomap, back off = the approach reversed. Picks are vertical first (tilted only when vertical isn't possible).
+   - Sim suite: give 8 scenarios, take 7.
+
+   **Open from this milestone:**
+   - Real-arm test of take (and of give since the octomap fix `a302090`): close trigger, measured box, give back, place.
+   - Handover parameters on the control page's Config tab (now `ros2 param set` only).
+   - The handover pose search sometimes skips the preferred 34° tilt and takes 52° / 69°: KDL's IK gets 0.2 s per
+     pose and fails more often right after a plan, while the machine is busy (load ~5 of 8 cores: Kinect driver,
+     hand tracker, the control page's live view, an idle pick executor at ~50 %, RViz animating the plan). The log
+     line *Handover pose: … (skipped: …)* shows why candidates failed.
 1. **Grip sensing — measured and in use (2026-10-01).** Empty vs tape / thin cardboard / sponge, 3 trials each: the
    empty check uses stop position and holding current together (see [pick execution](06-pick-execution.md)). Next:
    re-check the empty baseline with a warm servo (~50 °C), then force control by current and a stall guard that
@@ -144,6 +168,9 @@ In rough order of priority:
 | 2026-09-29 | First real picks: two crashes (see below), both fixed; `cell` script; **first successful real pick**. |
 | 2026-10-02 | **Wired LAN** (USB-C hub/Ethernet combo): arm link and ROS over the cable, Wi-Fi as backup; ROS limited to one interface (two on one subnet left the trajectory controller unconfigured). |
 | 2026-10-02 | **Camera moved** towards the user after an occlusion study; recalibrated; table plane from three claw touches (the 0.87° tilt was a calibration error). |
+| 2026-10-02 | `controller_starter` replaces the spawner (start-up race); real-time priority for cells started from the page. |
+| 2026-10-03 | **Handover — give**: to the user's hand, released on the hand at the object or on a pull; watched, stop / pause / resume; worked on the real arm. Picks vertical first. |
+| 2026-10-03 | **Handover — take** (hold this): closes when an object is between the fingers and the hand is clear; the object measured from depth; sim-tested. |
 
 ## Lessons learned (incidents and their fixes)
 
@@ -175,6 +202,9 @@ These are worth reading: each one changed the design.
 | 22 | "Trajectory controller is unconfigured / inactive" after most cell starts (2026-10-02 evening) | While ~17 nodes register with the discovery server, the controller manager's reply to the just-started spawner got lost (*failed to send response … (timeout)*): load → "already loaded" on the retry, configure → 60 s wait. Worse while the Wi-Fi and the new LAN cable were both on the same subnet (every node advertised two addresses) | ROS limited to one interface (`fastdds_qbarm.xml`); `controller_starter` instead of the spawner (its retry configured the controller again, which re-created the action server: MoveIt then failed with *Action client not connected* / error −4); the pick executor configures / activates the controller itself when the arm is ready |
 | 23 | Arm jitter and C24 "Speed Exceeds Limit" on fast free moves | Control-loop overruns: Wi-Fi round trips in `read()` (37–47/min) and, for cells started from the control page, no real-time priority (the service didn't allow it) | Wired LAN (cable + RT idle: 2.6/min); `LimitRTPRIO=99` in `qb-arm-control.service`. C24 at `velocity_scaling` 0.9 still being limit-tested |
 | 24 | Kinect driver: "Failed to poll cameras" (first ever) | 16 MB shared-memory segments, tried the same evening so the 3.7 MB colour frames go through shared memory — the driver's publishing stalled | Reverted to the default segments; the detector pairs colour + depth within 5 ms instead of by equal stamps (they differ by ~10 µs) |
+| 25 | A watched handover move ran to its end although the watchdog had fired | MoveIt's cancel of the running trajectory (ExecuteTrajectory) did not stop the execution | The executor cancels the trajectory controller's goals itself: the arm stands within ~0.1 s |
+| 26 | C22 (self-collision) on the real arm while backing off from a handover | The back-off ran along the tilted claw towards the base with the forearm turned over; MoveIt's model found it collision-free, the controller's own model did not | Natural configurations only (shoulder not leaning back > 10°, forearm roll ≤ 120°), the back-off is the approach reversed, the object held ≥ 30 cm from the base |
+| 27 | "Your hand is out of the arm's reach" with nothing in the way (the user: "there was NO obstacle") | The user's own hand was in the octomap: camera frames already on their way when the hand was masked were inserted after the octomap was cleared, and the table under the hand is filtered out, so no later ray removed it | Wait 0.8 s after masking before clearing; also mask the spots in front of the hand and the held object; the reply names what blocks |
 
 > **Safety rule born from this:** with the claw mounted, the arm's **all-zero joint pose** (xArm "home",
 > UFACTORY app "go home") puts the claw **into the robot base**. Never send the real arm there.
