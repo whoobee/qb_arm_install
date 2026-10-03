@@ -459,7 +459,9 @@ the pads, or where a thin object sticks out of them — leaving out the claw's o
 meshes, at the claw's angle, +8 mm), the table, anything within 3.5 cm of a hand and every pixel at a depth jump (the
 Kinect's "flying pixels" around the claw's edges made an empty claw look like a 4 × 10 × 7 cm object) give a box in
 the claw's frame (+8 mm: the camera sees one side). Not seen: a 4 cm box — the reply says so. The box is added to
-MoveIt and attached as `handed_N`: later moves (jog, give, place) are checked with it.
+MoveIt and attached as `handed_N`: later moves (jog, give, place) are checked with it. Like a picked target, the claw
+may touch it — set down, the opened fingers stand inside its box (without that the retreat after a place, and every
+move after it, failed as "in collision (claw_left_finger–handed_1)").
 
 A taken object is held like a picked one: **give** hands it back (its centre, not the TCP, 10 cm in front of the
 palm); **place** sets it down as if it had been picked from above (the claw straight down, the box upright under it) —
