@@ -43,7 +43,7 @@ flowchart LR
 | Grip | Closes to 1.2 rad (past pads-touching) and waits until the fingers stop; the servo pushes with the remaining error, limited by the firmware's stall guard. Grip check from stop position + servo current (INA219), on since 2026-10-01: servo position reads ~1.01 rad both empty and on a tape wall → INA219 current sensor ordered. |
 | Place (set an object down) | Working on the real arm: at a point, on / into / next to a detected object → above the spot, straight down to the height at which it was grasped above the surface (+3 mm), open, straight up. Tape roll placed 2 mm / 12 mm from the target; tape roll and screwdriver placed into a bin. Height is computed, not felt (no current sensing yet). |
 | Soft boundaries | Built and tested on the real cell (no motion): `config/boundaries.yaml` — vision workspace (the detector blacks out everything else before detection; place spots outside refused) and keep-out zones (MoveIt collision boxes: IK, plans and straight lines refused, checked with a temporary test zone). **The desk/pc zones are a first proposal from the camera image, to be confirmed.** |
-| Handover (give / hold this) | Give: worked on the real arm 5 times (2026-10-03) — to a hand held still, released on the hand at the object (1 s) or on a pull (arm joint torques); stops on a hand near the arm, pauses and resumes when the hand moves. Take: built and sim-tested (7 scenarios), **not yet run on the real arm**. |
+| Handover (give / hold this) | Give: worked on the real arm 5 times (2026-10-03) — to a hand held still, released on the hand at the object (1 s) or on a pull (arm joint torques); stops on a hand near the arm, pauses and resumes when the hand moves. Take: first real run 10-03 (closed and held; then the old move home hit joint 4's limit, fixed); now holds the object where it took it; object measured once the hand has left. |
 | Place check (height map) | Built and tested against the real camera (plan only): every spot is checked in a fresh height map (7 depth frames, robot cut out) — free under the object and the open fingers, seen by the camera; into a container, room below the rim above the contents, emptiest spot first, fill reported. **Not yet run with a real place motion.** |
 
 ## What is open
@@ -104,8 +104,9 @@ In rough order of priority:
      the palm, slowly; it opens when the hand has been at the object for 1 s, or on a pull (joint torques of the arm,
      0.8 Nm for 0.15 s). Worked on the real arm (08:16, 08:18, 08:20, 12:38, 14:13).
    - **Take (hold this)**: the claw comes to the hand open; it closes once the camera sees something between the fingers
-     and every hand clear of the claw for 0.5 s (or on *close now*); the object is measured in the depth image and held
-     as `handed_N` — give it back or place it like a picked one.
+     and every hand clear of the claw for 0.5 s (or on *close now*) and **holds it right there** (user, 10-03: no
+     retract, no home — the point is to hold it while you work on it); the object is measured in the depth image once
+     your hand has left it and held as `handed_N` — jog it, give it back or place it like a picked one.
    - Safety: watched every 30 ms — a hand within 5 cm of the arm or the stop button stops it within ~0.1 s (the
      trajectory controller's goals are cancelled); the hand moving / leaving / the tracker's gaps pause it, then it
      re-plans (up to 3 times). Natural arm configurations only (the controller's C22), the user's hand left out of the

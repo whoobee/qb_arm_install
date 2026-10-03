@@ -91,9 +91,10 @@ Control tab, claw panel, with the cell running and the hand tracker on (the live
 - **hold this** (click twice; the claw is empty): hold the object out still. The claw opens and comes to ~10 cm in front
   of your palm. Put the object between the fingers and **keep holding it**, your fingers at least 4 cm clear of the
   claw (hold it by its far end): it closes after 0.5 s. Small objects, or the camera can't see between the fingers:
-  press **close now**. It holds still 1 s — let go — then backs off and goes home holding it (`handed_1`, `handed_2`, …).
-  Afterwards: **give to me** gives it back; click a spot or an object in the image to put it there (*back where picked*
-  doesn't exist for it).
+  press **close now**. It **holds it right there** (`handed_1`, `handed_2`, …): let go, then jog it where you need it
+  (or go to a spot). The reply says the size it measured once your hand had left — MoveIt checks later moves with
+  that box. When done: **give to me** gives it back, **home** takes it home, or click a spot or an object in the image
+  to put it there (*back where picked* doesn't exist for it). Nothing put in within 30 s: the claw stays open there.
 - **stop** stops the arm where it is. It also stops by itself when a hand comes within 5 cm of the arm. When your hand
   moves or the camera loses it, it pauses and goes on once your hand is still again (at most 3 times).
 - **plan give** / **plan take** only plan the way to your hand (RViz).

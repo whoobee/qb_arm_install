@@ -398,7 +398,7 @@ sequenceDiagram
         E->>A: open, back off, home
     else take
         U->>A: puts the object between the open fingers, hand clear of them
-        E->>A: close after 0.5 s (or "close now"), measure the object, hold still 1 s, back off, home
+        E->>A: close after 0.5 s (or "close now"), measure the object, hold it right there
     end
 ```
 
@@ -448,11 +448,18 @@ The claw opens, comes to the hand open and waits. It **closes** when, for `take_
   closing claw can pinch (x ±1 cm, y ±4.6 cm, z −3…+3.1 cm). A hand the camera doesn't see does not count as clear.
 
 — or on **close now** (`/qb_arm_vision/close`). So: hold the object by its far end and keep holding it until the claw
-closes. The grip check is the pick's: closed on nothing → open again and wait on. The **object is measured** in a new
-depth frame: the points connected (5 mm voxels) to what is between the pads — leaving out the claw's own parts (its
-fingers and linkage from the meshes, at the claw's angle, +8 mm), the table and anything within 3.5 cm of a hand — give
-a box in the claw's frame (+8 mm: the camera sees one side). Not seen: a 4 cm box. The box is added to MoveIt and
-attached as `handed_N`. The arm holds still `take_hold_still` (1 s) while you let go, backs off, goes home.
+closes. The grip check is the pick's: closed on nothing → open again and wait on. Then the arm **holds it right there**
+— *hold this* is for working on it (soldering): no retract, no move home; jog it where you need it, home or give it
+back when done. Nothing put in within `handover_wait`: the claw stays open there.
+
+The **object is measured** once your hand has left it (every seen hand `take_hand_clear` + 2 cm from where the claw
+pinches for 0.5 s, at most `take_measure_wait`, 3 s — a hand at the object is left out of the depth points together
+with what it holds), over 3 new depth frames: the points connected (5 mm voxels) to what is on the grip line — between
+the pads, or where a thin object sticks out of them — leaving out the claw's own parts (its fingers and linkage from the
+meshes, at the claw's angle, +8 mm), the table, anything within 3.5 cm of a hand and every pixel at a depth jump (the
+Kinect's "flying pixels" around the claw's edges made an empty claw look like a 4 × 10 × 7 cm object) give a box in
+the claw's frame (+8 mm: the camera sees one side). Not seen: a 4 cm box — the reply says so. The box is added to
+MoveIt and attached as `handed_N`: later moves (jog, give, place) are checked with it.
 
 A taken object is held like a picked one: **give** hands it back (its centre, not the TCP, 10 cm in front of the
 palm); **place** sets it down as if it had been picked from above (the claw straight down, the box upright under it) —
@@ -505,7 +512,7 @@ Handover parameters, read at every handover (`ros2 param set` applies to the nex
 | `handover_stop_distance`, `handover_hand_moved` | 0.05, 0.08 | m: a hand this close to the arm → stop; the target hand moved this far → pause |
 | `take_hand_clear` | 0.04 | m: every seen hand this far from where the claw pinches = clear |
 | `take_close_delay`, `take_min_points` | 0.5, 25 | take: object seen + hands clear this long → close; depth points that count as an object |
-| `take_hold_still` | 1.0 | s the arm holds still after closing (you let go) |
+| `take_measure_wait` | 3.0 | s: after closing, at most this long for your hand to leave the object before it is measured |
 | `octomap_mask_delay` | 0.8 | s between leaving the hand out of the octomap and clearing it |
 
 ## Example session
