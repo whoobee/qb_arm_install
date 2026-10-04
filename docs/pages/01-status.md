@@ -174,7 +174,7 @@ In rough order of priority:
 | 2026-10-03 | **Handover — take** (hold this): closes when an object is between the fingers and the hand is clear; the object measured from depth; sim-tested. |
 | 2026-10-04 | **Automatic recovery**: an arm fault during any motion (collision, …) is cleared and the step re-planned from where the arm stopped and carried on (max 3 per step, then bail out; stuck in contact → carried on unchecked / 3 cm up first); e-stop codes never. |
 | 2026-10-04 | Jog (micro adjustments) no longer collision-checked: only reach and joint limits stop a step. |
-| 2026-10-04 | **Hand gestures**: finger-state poses (held still) and swipes from the hand tracker's landmarks, mapped to the control page's commands; Config → gestures (live readout, capture from the hand, mapping); master switch off at start. Not yet tuned on real hands. |
+| 2026-10-04 | **Hand gestures**: finger-state poses (held still) and swipes from the hand tracker's landmarks, mapped to the control page's commands; Config → gestures (live readout, capture from the hand, mapping); master switch, on at start. Not yet tuned on real hands. |
 
 ## Lessons learned (incidents and their fixes)
 

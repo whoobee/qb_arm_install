@@ -303,8 +303,8 @@ flowchart LR
 - **Commands**: stop, home, give, take (hold this), close now, release, place back, claw open / close, go to
   `<spot>`, jog `<±x|±y|±z> <mm>`, detect `<prompt>`, pick `<object>`, recover. They run exactly as from the page
   (no confirmation); stop and close-now run even while another command runs.
-- **Master switch**: header chip *gestures* or the Control tab's hands panel; switching on needs two clicks; **off
-  at every control-center start** (not saved). Events (recognised / running / result) go to the Control tab's
+- **Master switch**: header chip *gestures* or the Control tab's hands panel; switching on needs two clicks; **on
+  at every control-center start** (user 2026-10-04; the switch state is not saved). Events (recognised / running / result) go to the Control tab's
   feed; with it off, recognitions are only shown on the Config page.
 - **Config → gestures**: live readout per hand (each finger's state and bend, speed, matching gestures); the gesture
   table (finger selects, motion, hold; *capture* sets the fingers from the hand under the camera, *+ new gesture from
