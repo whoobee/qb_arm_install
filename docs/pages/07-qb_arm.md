@@ -248,7 +248,7 @@ pick executor on every change), servo current, servo and ESP32 temperature (ambe
 | Cell | status, **start real / start sim / stop** (click twice to confirm), arm state / mode / error (code + meaning) / TCP, **recover arm** after a fault (clear error + warning, motors on, servo mode, ready; `/uf_api/*`), links (arm, claw, GPU server), services | `cell` script; `/ufactory/robot_states`; `ping`; `systemctl is-active` |
 | Claw | live servo current, angle, temperatures, supply voltage, Wi-Fi signal; charts (30 s, temperatures 5 min); **open / half / close / limp** | `/claw/*`; `/claw/command` (clamped to 0..0.96 rad: no squeezing), `/claw/torque` |
 | Control | a prompt + **detect**; the camera panel: **live** video (MJPEG `/api/live.mjpg`, ~10–15 fps: the hand tracker's `/qb_arm_vision/camera_preview`, else the colour image scaled down; the tracked hands drawn in — skeleton, id, distance to the arm, red within 15 cm, amber = depth carried over; detected objects outlined; streamed only while the Control tab is visible) or the **last detection** image; the objects. **Pick mode** (claw empty): click an object (image or list) → a menu at the mouse: plan / pick. **Place mode** (claw holds something): click an object → into / on / next to (side) it; click free table → place at that point (the pixel's ray meets the measured table plane); back where picked, release; plan home / home / save pose as home. Plan = shown in RViz; go = the real arm, click twice. A mission log of the results | `/qb_arm_vision/detect`, `/pick`, `/place`, `/release`, `/home`, `/save_home`, `/held`, `/debug_image`, `/objects`, `/camera_preview`, `/hands`; `/kinect/rgb/camera_info` (`/kinect/rgb/image_raw` only without the tracker) |
-| Config | a menu on the left: **motion** (below), **spots** (below) and **boundaries** (vision / no-go zones on a top view of the table, below); later: current and temperature limits. Links: `#config/motion`, `#config/boundaries` (`#boundaries` still works) | `config/motion.yaml` + the pick executor's parameters; `config/boundaries.yaml` |
+| Config | a menu on the left: **motion** (below), **spots** (below), **gestures** (below) and **boundaries** (vision / no-go zones on a top view of the table, below); later: current and temperature limits. Links: `#config/motion`, `#config/boundaries` (`#boundaries` still works) | `config/motion.yaml` + the pick executor's parameters; `config/boundaries.yaml` |
 | Log | the cell log, colour-coded by level and node, local times, cell starts marked; filters: level, node, text search (highlighted), error / warning counters; the controller's 150 Hz overrun warnings are hidden (they were 796 of 800 lines) | `~/.ros/log/qb_arm_cell.log` |
 
 The arm moves only through the pick executor, when a pick or place is executed from the Control tab; the claw moves
@@ -267,8 +267,8 @@ from the saved file, the page shows both.
 
 **Control → jog**: an x/y pad (forward = away from the robot, left = +y), up / down, turn (yaw), tilt (roll, pitch);
 steps of 1 / 5 / 10 / 50 mm and 1 / 5 / 15°; optionally the keyboard (↑ ↓ ← →, PgUp / PgDn, Q / E — not while typing);
-the TCP pose live. Every click moves at once, without the two-click confirm: the steps are small, straight, slow
-and collision-checked. **Control → spots & poses**: plan / go (go: click twice) per spot, and the current TCP saved as
+the TCP pose live. Every click moves at once, without the two-click confirm: the steps are small, straight and slow
+(not collision-checked since 2026-10-04: only reach and joint limits stop one). **Control → spots & poses**: plan / go (go: click twice) per spot, and the current TCP saved as
 a new spot or pose by name.
 
 **Config → spots**: `config/spots.yaml` (`qb_arm/spots.py`: load / validate / write, shared with the pick executor).
@@ -276,6 +276,41 @@ A top view around the robot (the camera image on request, a 10 cm grid, the ~44 
 the claw now) with a draggable marker per spot (green) or pose (violet, with its heading); a table with exact values
 (mm, degrees); *here* takes the current TCP; checked live (name, numbers, nothing inside a keep-out zone), saved with a
 backup of the old file; the next go-to uses it — no restart.
+
+**Gestures** (2026-10-04; `qb_arm/gestures.py`, `config/gestures.yaml`, class `GestureControl` in the control
+center): hand poses seen by the ceiling camera mapped to the page's commands.
+
+```mermaid
+flowchart LR
+    T["hand_tracker<br/>/qb_arm_vision/hands<br/>21 landmarks, 3D"] --> W{palm over the table?<br/>vision workspace}
+    W -- no --> I[ignored]
+    W -- yes --> F["finger states<br/>bend = sum of bone angles<br/>extended / curled / between"]
+    F --> R["Recognizer<br/>static: pose + palm still for hold s<br/>swipe: pose + 10 cm in a direction"]
+    R --> E{gesture control on?<br/>mapped?}
+    E -- no --> L[logged only]
+    E -- "stop / close now" --> N[run at once]
+    E -- other --> Q["run if nothing else runs<br/>(else ignored + logged)"]
+    N & Q --> X["bridge.run_* =<br/>the page's own commands"]
+```
+
+- **Gesture** = each finger *extended*, *curled* or *any*, plus *motion*: held still for `hold` s, or a swipe
+  (+x away from the robot, −x, +y robot's left, −y, up, down: ≥ `swipe_distance` 10 cm within `swipe_time` 0.8 s,
+  mostly straight). A static gesture fires **once per showing** (the hand must leave the pose for `release_time`
+  first); a swipe once per movement (the hand rests first). Finger bend = the angles between the finger's bones
+  added up (rotation- and size-independent): < 50° extended, > 110° curled. The thumb is curled when bent > 70° or
+  its tip is within 0.75 palm widths of the middle finger's base (tucked); extended < 45° and away from the palm. No
+  palm up/down: MediaPipe's left/right is unreliable from above, so the palm side can't be told.
+- **Commands**: stop, home, give, take (hold this), close now, release, place back, claw open / close, go to
+  `<spot>`, jog `<±x|±y|±z> <mm>`, detect `<prompt>`, pick `<object>`, recover. They run exactly as from the page
+  (no confirmation); stop and close-now run even while another command runs.
+- **Master switch**: header chip *gestures* or the Control tab's hands panel; switching on needs two clicks; **off
+  at every control-center start** (not saved). Events (recognised / running / result) go to the Control tab's
+  feed; with it off, recognitions are only shown on the Config page.
+- **Config → gestures**: live readout per hand (each finger's state and bend, speed, matching gestures); the gesture
+  table (finger selects, motion, hold; *capture* sets the fingers from the hand under the camera, *+ new gesture from
+  my hand*); the mapping (gesture → command + argument, with spot / object suggestions; ⚠ marks commands that move
+  the arm); the recognition limits. Checked live (`gestures.parse`), saved with a backup, used at once.
+- Defaults: open hand, fist, point, victory, thumbs up; only **fist → stop** mapped.
 
 **Config → boundaries**: a top view of the table (the colour image warped onto the table plane, 2.5 mm per pixel, x up /
 y left), vision zones (free quadrilaterals) and no-go zones (boxes: move, resize, heights, turn, name), checked
@@ -347,6 +382,7 @@ keep_out:                  # boxes the arm may never enter (MoveIt collision obj
 | `config/obstacles.yaml` | `obstacle_cloud` (keyed `/**/obstacle_cloud`, it runs in `/kinect`) and `planning_scene_setup` parameters |
 | `config/table.yaml` | measured table plane (`measure_table`), keyed `/**` |
 | `config/spots.yaml` | named spots and poses for go-to (the control page's Config → spots, or the Control tab's *save here*) |
+| `config/gestures.yaml` | hand gestures (finger states, motion, hold), their mapping to commands, recognition limits (Config → gestures) |
 | `config/motion.yaml` | pick executor speeds and pauses (the control page's Config → motion), over its `pick_executor.yaml` |
 | `config/home.yaml` | the arm's home pose (joint values): pick_executor goes there after every place; `save_home` writes it |
 | `config/sensors_3d.yaml` | MoveIt 3D sensor (octomap) configuration |
