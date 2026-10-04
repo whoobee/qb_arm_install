@@ -29,7 +29,8 @@ Source: `qb_arm_vision/qb_arm_vision/pick_executor.py`, parameters in `config/pi
 | MoveIt | clients | `/compute_ik`, `/move_action`, `/compute_cartesian_path`, `/execute_trajectory`, `/get_planning_scene`, `/apply_planning_scene`, `/check_state_validity` |
 
 **Before every pick** (also `plan_only`), on the real arm: the arm's controller state (`/ufactory/robot_states`) is
-checked. An arm **error** (`err` ≠ 0) ends the request with the error code — a person recovers the arm. If the arm is
+checked. An arm **error** (`err` ≠ 0) is cleared automatically (`auto_recover`, see *Automatic recovery* below; with it
+off, or for an e-stop code, the request ends with the error code and a person recovers the arm). If the arm is
 **not in servo mode** (mode ≠ 1, or state 4 stopped / 5 config changed — e.g. after manual/teach mode or the UFACTORY
 app), the pick enables the motors and sets mode 1 and state 0 through UFACTORY's service driver (`/uf_api/...`, started
 by the cell) and waits for the arm to confirm; the arm does not move. Without this, every trajectory is aborted with
@@ -139,10 +140,39 @@ for which steps 3–5 succeed is chosen; with `plan_only` the pick stops here (M
 
 ### Failure handling
 
-Any exception (MoveIt not answering, a rejected goal, execution failure) ends the pick with `success=false` and the
-message; nothing is retried automatically and the arm stays where it stopped. If the arm itself faulted (e.g. C31),
-the controller aborts the trajectory and MoveIt reports error −4; the arm must be recovered by a person
-(see [operations](12-operations.md)).
+Any exception (MoveIt not answering, a rejected goal, a planning failure) ends the pick with `success=false` and the
+message; the arm stays where it stopped. The one exception is an **arm fault** during a motion — next section.
+
+### Automatic recovery
+
+(2026-10-04, the user's choice: any error, the step continued as it was; the e-stop is the safety.) When the arm
+itself faults during a motion (e.g. C31 collision, C22 self-collision, C24 speed, also servo errors like C16), the
+driver deactivates the trajectory controller and MoveIt reports error −4. Every motion of the executor — pick, place,
+home, jog, go-to, and the watched handover moves — then:
+
+```mermaid
+flowchart LR
+    F[motion fails] --> E{arm error?}
+    E -- no --> X[task fails]
+    E -- "C1 / C2 e-stop, auto_recover off,<br/>stop pressed, retries used up" --> X
+    E -- yes --> R["clear error + warning, motors on,<br/>servo mode, state ready"]
+    R --> C[wait: controller active again]
+    C --> O[refresh octomap]
+    O --> P["re-plan the SAME step from where the arm stopped<br/>straight step: straight to the same pose<br/>free move: to the same joint values, same speed"]
+    P --> M[execute]
+    M -- fails again --> E
+```
+
+- No back-off and no slow-down: the step is re-planned from the current state at its own speed (a straight step —
+  approach, lift, lower, retreat, jog, last stretch to the hand, back-off from the hand — stays straight).
+- At most `auto_recover_retries` (2) recoveries per step; then the task fails, the arm left in error.
+- **Never** cleared automatically: `auto_recover_never` = C1 (e-stop button), C2 (emergency IO) — otherwise the arm
+  would drive on by itself once the e-stop is released. The page's **stop** during a fault also ends the task.
+- An error left from before is cleared the same way at the start of the next motion request.
+- The result message lists the recoveries: `… (recovered automatically from C31 during approach)`; the log has one
+  `arm error C… - clearing it automatically` warning per recovery.
+- During a handover the hand watch stays on through the retry (hand moved / gone → the usual pause and re-plan).
+- Not testable in sim (no arm errors there); logic checked offline with a stubbed arm.
 
 ## Place
 

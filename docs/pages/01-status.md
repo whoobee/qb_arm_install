@@ -34,7 +34,7 @@ flowchart LR
 | Obstacle avoidance (octomap) | **On by default** (2026-09-30, after the arm hit an undetected water bottle): the camera's point cloud minus the robot and the known objects → MoveIt's octomap; refreshed before every pick and place. Tested on the real cell (plan only): a pose 1 cm above the bottle refused, beside it accepted; picks of known objects still plan. |
 | Detection / segmentation / grasps (GPU server) | Working, ~3.7 s per request (Contact-GraspNet ~2.5 s of it). |
 | Grasp logic for the claw | Working: CGN grasps + ring (rim) grasps + narrow-slice grasps for flat/long objects + top-slice fallback, finger-landing check, closing-claw geometry, heights above the measured table plane. Picked: tape roll (rim), pliers (7 mm high, across the jaws). |
-| Pick executor | Working on the real arm: servo-mode check → pre-grasp → straight approach → close until the fingers stop → attach → lift; release. Puts the arm back into servo mode itself before every pick (arm errors are left to a person). |
+| Pick executor | Working on the real arm: servo-mode check → pre-grasp → straight approach → close until the fingers stop → attach → lift; release. Puts the arm back into servo mode itself before every pick and recovers arm faults automatically, carrying the step on (not the e-stop). |
 | Table model | Plane from three claw touches (2026-10-02: flat against the robot base within 0.16°; the camera agrees within ~1.5 mm) used for object heights, fingertip clearance (3 mm) and MoveIt's collision table. |
 | Process management | `cell start sim\|real` / `cell stop`: one process group, clean starts and stops. |
 | Documentation | This site, `http://192.168.1.171:8080`, with live status. |
@@ -172,6 +172,7 @@ In rough order of priority:
 | 2026-10-02 | `controller_starter` replaces the spawner (start-up race); real-time priority for cells started from the page. |
 | 2026-10-03 | **Handover — give**: to the user's hand, released on the hand at the object or on a pull; watched, stop / pause / resume; worked on the real arm. Picks vertical first. |
 | 2026-10-03 | **Handover — take** (hold this): closes when an object is between the fingers and the hand is clear; the object measured from depth; sim-tested. |
+| 2026-10-04 | **Automatic recovery**: an arm fault during any motion (collision, …) is cleared and the step re-planned from where the arm stopped and carried on (max 2 per step); e-stop codes never. |
 
 ## Lessons learned (incidents and their fixes)
 

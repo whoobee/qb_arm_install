@@ -15,8 +15,9 @@ Everything below also works from a terminal.
 > 2. **Keep the emergency stop within reach** during every real motion. First runs of anything new: `plan_only` first,
 >    check the plan in RViz, then execute.
 > 3. **Never power the ESP32 from the buck converter and USB at the same time** (back-feed into the PC's USB port).
-> 4. After a fault or an emergency stop, **a person recovers the arm** (clear the error, move it clear). The software
->    does not retry.
+> 4. **The software recovers arm faults by itself** (since 2026-10-04): an error during a motion — a collision too — is
+>    cleared and the step carried on, up to 2 times per step ([automatic recovery](06-pick-execution.md)). **The
+>    emergency stop is the safety**: its codes (C1, C2) are never cleared automatically. Off: `auto_recover: false`.
 > 5. Don't leave the claw squeezing an object for long: the servo heats up while holding (watch `/claw/servo_temperature`;
 >    the firmware derates from 60 °C and goes limp at 70 °C — a held object then drops).
 
@@ -151,6 +152,9 @@ The simulated claw (sim cell) listens on `/sim_claw/command` instead.
 Use `-r 1` for a few seconds instead of `--once`: a one-shot publisher can exit before discovery has matched it.
 
 ## Recovery after a fault
+
+Normally automatic (`auto_recover`): a fault during a motion is cleared and the step carried on. By hand only after
+the emergency stop, when a step faulted 3 times, or with `auto_recover: false`.
 
 Symptoms: a pick fails with `MoveIt error -4`; `/ufactory/robot_states` shows `err` ≠ 0 or `state` 4.
 
