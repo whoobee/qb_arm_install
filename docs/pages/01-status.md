@@ -175,6 +175,7 @@ In rough order of priority:
 | 2026-10-04 | **Automatic recovery**: an arm fault during any motion (collision, …) is cleared and the step re-planned from where the arm stopped and carried on (max 3 per step, then bail out; stuck in contact → carried on unchecked / 3 cm up first); e-stop codes never. |
 | 2026-10-04 | Jog (micro adjustments) no longer collision-checked: only reach and joint limits stop a step. |
 | 2026-10-04 | **Hand gestures**: finger-state poses (held still) and swipes from the hand tracker's landmarks, mapped to the control page's commands; Config → gestures (live readout, capture from the hand, mapping); master switch, on at start. Not yet tuned on real hands. |
+| 2026-10-04 | **Jog by hand**: gestures get thumb direction, palm axis, spread, fingertip touch, wave / flex motions and repeat-while-active: come here / push back / thumb left-right-up-down jog continuously, L shape opens and fox closes the claw, fist stops. |
 
 ## Lessons learned (incidents and their fixes)
 

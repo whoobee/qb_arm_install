@@ -278,39 +278,58 @@ the claw now) with a draggable marker per spot (green) or pose (violet, with its
 backup of the old file; the next go-to uses it — no restart.
 
 **Gestures** (2026-10-04; `qb_arm/gestures.py`, `config/gestures.yaml`, class `GestureControl` in the control
-center): hand poses seen by the ceiling camera mapped to the page's commands.
+center): hand poses and motions seen by the ceiling camera mapped to the page's commands — mainly to jog the claw by
+hand.
 
 ```mermaid
 flowchart LR
     T["hand_tracker<br/>/qb_arm_vision/hands<br/>21 landmarks, 3D"] --> W{palm over the table?<br/>vision workspace}
     W -- no --> I[ignored]
-    W -- yes --> F["finger states<br/>bend = sum of bone angles<br/>extended / curled / between"]
-    F --> R["Recognizer<br/>static: pose + palm still for hold s<br/>swipe: pose + 10 cm in a direction"]
+    W -- yes --> F["pose features<br/>finger states · thumb direction<br/>palm axis · spread · touch · flex"]
+    F --> R["Recognizer<br/>held still · swipe<br/>wave x/y/z · flex"]
     R --> E{gesture control on?<br/>mapped?}
     E -- no --> L[logged only]
     E -- "stop / close now" --> N[run at once]
-    E -- other --> Q["run if nothing else runs<br/>(else ignored + logged)"]
+    E -- other --> Q["run if nothing else runs<br/>repeat: again while the gesture lasts"]
     N & Q --> X["bridge.run_* =<br/>the page's own commands"]
 ```
 
-- **Gesture** = each finger *extended*, *curled* or *any*, plus *motion*: held still for `hold` s, or a swipe
-  (+x away from the robot, −x, +y robot's left, −y, up, down: ≥ `swipe_distance` 10 cm within `swipe_time` 0.8 s,
-  mostly straight). A static gesture fires **once per showing** (the hand must leave the pose for `release_time`
-  first); a swipe once per movement (the hand rests first). Finger bend = the angles between the finger's bones
-  added up (rotation- and size-independent): < 50° extended, > 110° curled. The thumb is curled when bent > 70° or
-  its tip is within 0.75 palm widths of the middle finger's base (tucked); extended < 45° and away from the palm. No
-  palm up/down: MediaPipe's left/right is unreliable from above, so the palm side can't be told.
-- **Commands**: stop, home, give, take (hold this), close now, release, place back, claw open / close, go to
-  `<spot>`, jog `<±x|±y|±z> <mm>`, detect `<prompt>`, pick `<object>`, recover. They run exactly as from the page
-  (no confirmation); stop and close-now run even while another command runs.
+- **Pose** (each part optional): fingers *extended* / *curled* / *any* (finger bend = the angles between its bones
+  added up: < 50° extended, > 110° curled; the thumb is curled when bent > 70° or its tip is within 0.75 palm widths
+  of the middle finger's base); **thumb points** +x / −x / +y / −y / up / down (thumb base → tip, within 53° of the
+  axis); **palm faces** an axis: flat (up or down), x (robot / away), y (sideways) — the axis only: MediaPipe's
+  left/right is unreliable from above, so which side faces the camera can't be told; **thumb–index spread** ≥ deg;
+  **touch**: the fingertips the thumb tip touches (< 0.35 palm widths).
+- **Motion**: *held still* (pose for `hold` s, palm < 15 cm/s, fingers moving < 30°; fires once per showing);
+  *swipe* in a direction (≥ 10 cm in 0.8 s, once per movement); *wave x / y / z* (the palm back and forth along the
+  axis: ≥ 2 turns of ≥ 3 cm within 1.5 s, mostly along it); *flex* (the four fingers' mean bend up and down: ≥ 2
+  turns of ≥ 40° within 1.5 s). Wave and flex are **active while the motion goes on**; the pose must match in 60 % of
+  that window's frames.
+- **Repeat** (per mapping): the command runs again after each run while its gesture stays active (0.4 s grace) —
+  continuous jogging in 10 mm steps, ending with the gesture. A stop gesture ends a repeat too.
+- **Commands**: stop, jog `<±x|±y|±z> <mm>`, claw open / close, home, give, take (hold this), close now, release,
+  place back, go to `<spot>`, detect `<prompt>`, pick `<object>`, recover — exactly as from the page (no
+  confirmation); stop and close-now run even while another command runs, anything else is ignored (and logged) then.
+- **Default set** (the user's, directions as on the jog pad: +x away from the robot = towards the user, +y = left):
+
+| Gesture | Pose | Motion | Command |
+|---|---|---|---|
+| come here | thumb extended, palm flat | flex | jog +x 10 mm, repeat |
+| push back | all extended, palm facing x | wave x | jog −x 10 mm, repeat |
+| thumb left / right | fist, thumb pointing +y / −y | wave y | jog +y / −y, repeat |
+| thumb up / down | fist, thumb pointing up / down | wave z | jog +z / −z, repeat |
+| l shape | all extended, thumb–index ≥ 70° | held 0.5 s | claw open |
+| pinch fox | index + little extended, thumb tip on middle + ring tips | held 0.5 s | claw close |
+| fist | all curled | held 0.3 s | stop |
+
 - **Master switch**: header chip *gestures* or the Control tab's hands panel; switching on needs two clicks; **on
-  at every control-center start** (user 2026-10-04; the switch state is not saved). Events (recognised / running / result) go to the Control tab's
-  feed; with it off, recognitions are only shown on the Config page.
-- **Config → gestures**: live readout per hand (each finger's state and bend, speed, matching gestures); the gesture
-  table (finger selects, motion, hold; *capture* sets the fingers from the hand under the camera, *+ new gesture from
-  my hand*); the mapping (gesture → command + argument, with spot / object suggestions; ⚠ marks commands that move
-  the arm); the recognition limits. Checked live (`gestures.parse`), saved with a backup, used at once.
-- Defaults: open hand, fist, point, victory, thumbs up; only **fist → stop** mapped.
+  at every control-center start** (user 2026-10-04; the switch state is not saved). Events go to the Control tab's
+  feed.
+- **Config → gestures**: live readout per hand (finger states and bends, thumb direction, palm axis, spread, touch,
+  flex, speed, matching poses, active gestures); the gesture table (fingers on the first line; thumb, palm, spread,
+  touch, motion, hold on the second; *capture* takes fingers, thumb direction, palm and touch from the hand under the
+  camera); the mapping with *repeat*; the recognition limits. Checked live (`gestures.parse`), saved with a backup,
+  used at once. Tested on synthetic hands only so far; to be tuned on real hands.
 
 **Config → boundaries**: a top view of the table (the colour image warped onto the table plane, 2.5 mm per pixel, x up /
 y left), vision zones (free quadrilaterals) and no-go zones (boxes: move, resize, heights, turn, name), checked
