@@ -16,7 +16,7 @@ Everything below also works from a terminal.
 >    check the plan in RViz, then execute.
 > 3. **Never power the ESP32 from the buck converter and USB at the same time** (back-feed into the PC's USB port).
 > 4. **The software recovers arm faults by itself** (since 2026-10-04): an error during a motion — a collision too — is
->    cleared and the step carried on, up to 2 times per step ([automatic recovery](06-pick-execution.md)). **The
+>    cleared and the step carried on, up to 3 times per step ([automatic recovery](06-pick-execution.md)). **The
 >    emergency stop is the safety**: its codes (C1, C2) are never cleared automatically. Off: `auto_recover: false`.
 > 5. Don't leave the claw squeezing an object for long: the servo heats up while holding (watch `/claw/servo_temperature`;
 >    the firmware derates from 60 °C and goes limp at 70 °C — a held object then drops).

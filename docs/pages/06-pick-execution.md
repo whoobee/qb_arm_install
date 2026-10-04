@@ -158,14 +158,18 @@ flowchart LR
     E -- yes --> R["clear error + warning, motors on,<br/>servo mode, state ready"]
     R --> C[wait: controller active again]
     C --> O[refresh octomap]
-    O --> P["re-plan the SAME step from where the arm stopped<br/>straight step: straight to the same pose<br/>free move: to the same joint values, same speed"]
+    O --> P["re-plan the SAME step from where the arm stopped<br/>straight step: straight to the same pose<br/>free move: to the same joint values, same speed<br/>(pose in collision: unchecked / 3 cm up first)"]
     P --> M[execute]
     M -- fails again --> E
 ```
 
 - No back-off and no slow-down: the step is re-planned from the current state at its own speed (a straight step —
   approach, lift, lower, retreat, jog, last stretch to the hand, back-off from the hand — stays straight).
-- At most `auto_recover_retries` (2) recoveries per step; then the task fails, the arm left in error.
+- At most `auto_recover_retries` (3) recoveries per step; then the task bails out, the arm left in error.
+- **Stuck in contact**: after a real collision the arm usually still touches what it hit, so MoveIt sees its pose as
+  in collision and would refuse every plan. Then a straight step carries on **without the collision check**, and a
+  free move first goes `auto_recover_escape` (3 cm) straight up, unchecked, and is re-planned from there. A joint past
+  its limit is not handled (task fails).
 - **Never** cleared automatically: `auto_recover_never` = C1 (e-stop button), C2 (emergency IO) — otherwise the arm
   would drive on by itself once the e-stop is released. The page's **stop** during a fault also ends the task.
 - An error left from before is cleared the same way at the start of the next motion request.
