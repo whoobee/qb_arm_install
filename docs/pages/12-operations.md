@@ -73,7 +73,8 @@ it can't be checked (place elsewhere, or move the arm away first).
 ## Holding things: jog, spots and poses
 
 Control tab, with the cell running: **jog** moves the claw (and whatever it holds) in small straight steps — pick the
-step, click the direction (or tick *keyboard*: arrows, PgUp / PgDn, Q / E). To come back to a place, type a name under
+step, click the direction (or tick *keyboard*: arrows, PgUp / PgDn, Q / E). Jog steps are **not collision-checked** — watch the
+claw. To come back to a place, type a name under
 **spots & poses** and *save here as spot* (position) or *as pose* (position + orientation); *go* (click twice) takes
 the arm there. Exact values and dragging on a top view: Config → spots.
 

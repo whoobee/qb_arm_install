@@ -173,6 +173,7 @@ In rough order of priority:
 | 2026-10-03 | **Handover — give**: to the user's hand, released on the hand at the object or on a pull; watched, stop / pause / resume; worked on the real arm. Picks vertical first. |
 | 2026-10-03 | **Handover — take** (hold this): closes when an object is between the fingers and the hand is clear; the object measured from depth; sim-tested. |
 | 2026-10-04 | **Automatic recovery**: an arm fault during any motion (collision, …) is cleared and the step re-planned from where the arm stopped and carried on (max 2 per step); e-stop codes never. |
+| 2026-10-04 | Jog (micro adjustments) no longer collision-checked: only reach and joint limits stop a step. |
 
 ## Lessons learned (incidents and their fixes)
 

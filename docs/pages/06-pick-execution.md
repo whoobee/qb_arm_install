@@ -374,10 +374,12 @@ The helping-hand basics: hold something where you want it, and nudge it.
 
 **Jog** (`/qb_arm_vision/jog`): `translation` (m, world frame) and `rotation` (rad, about the world x / y / z axes
 through the TCP: roll, pitch, yaw), each at most `jog_max_step` (5 cm) / `jog_max_angle` (15°) per axis. One
-straight Cartesian path from the current TCP pose (every 5 mm checked for collisions, cut at a joint jump), at
-`jog_velocity_scaling` (0.05, at most 0.3; Config → motion), carrying whatever the claw holds. All or nothing: a step
-that can't be done completely is refused with how far it would get and what it would touch (*"Jog −50 mm z blocked:
-only 50% … claw_left_finger–table"*). No octomap refresh before a jog (it would add 1.2 s to every step).
+straight Cartesian path from the current TCP pose (IK every 5 mm, cut at a joint jump), at
+`jog_velocity_scaling` (0.05, at most 0.3; Config → motion), carrying whatever the claw holds. **Not checked for
+collisions** (since 2026-10-04, the user's choice: micro adjustments must be able to nudge the claw against objects,
+the table or into tight spots) — objects, octomap, table and the arm itself are all ignored; contact is caught only by
+the arm's own collision detection (C31, then [automatic recovery](#automatic-recovery)). All or nothing: a step that
+can't be done completely (reach, joint limits) is refused with how far it would get.
 
 **Go-to** (`/qb_arm_vision/go_to`): the spot or pose `name` (case-insensitive) from qb_arm's `config/spots.yaml`
 (launch argument `spots_file`, read at every call): a **spot** is a position — the TCP goes there and the claw keeps
