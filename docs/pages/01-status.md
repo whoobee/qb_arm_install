@@ -176,6 +176,7 @@ In rough order of priority:
 | 2026-10-04 | Jog (micro adjustments) no longer collision-checked: only reach and joint limits stop a step. |
 | 2026-10-04 | **Hand gestures**: finger-state poses (held still) and swipes from the hand tracker's landmarks, mapped to the control page's commands; Config → gestures (live readout, capture from the hand, mapping); master switch, on at start. Not yet tuned on real hands. |
 | 2026-10-04 | **Jog by hand**: gestures get thumb direction, palm axis, spread, fingertip touch, wave / flex motions and repeat-while-active: come here / push back / thumb left-right-up-down jog continuously, L shape opens and fox closes the claw, fist stops. |
+| 2026-10-04 | Gestures **tuned on recordings of the user's hand**: recognition on MediaPipe's metric hand shape (new `Hand.shape`), half/bent finger states, thumb-direction cones, beak = close claw; replay: every gesture in its own segment, none in the gaps. |
 
 ## Lessons learned (incidents and their fixes)
 

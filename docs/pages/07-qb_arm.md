@@ -294,17 +294,20 @@ flowchart LR
     N & Q --> X["bridge.run_* =<br/>the page's own commands"]
 ```
 
-- **Pose** (each part optional): fingers *extended* / *curled* / *any* (finger bend = the angles between its bones
-  added up: < 50° extended, > 110° curled; the thumb is curled when bent > 70° or its tip is within 0.75 palm widths
-  of the middle finger's base); **thumb points** +x / −x / +y / −y / up / down (thumb base → tip, within 53° of the
-  axis); **palm faces** an axis: flat (up or down), x (robot / away), y (sideways) — the axis only: MediaPipe's
-  left/right is unreliable from above, so which side faces the camera can't be told; **thumb–index spread** ≥ deg;
-  **touch**: the fingertips the thumb tip touches (< 0.35 palm widths).
+- **Pose** (each part optional), measured on MediaPipe's **metric 3D hand shape** (`Hand.shape`, its world
+  landmarks rotated into the world frame by the hand tracker — the image landmarks lifted with depth were distorted
+  along the view: palms 4–7 cm wide, fingers bent 340°): fingers *extended* (bend < 115°) / *half* / *curled*
+  (> 240°) / *bent* (half or curled) / *any* — bend = the angles between the finger's bones added up; the thumb
+  extended < 40°, curled > 42°; **thumb points** +x / −x / +y / −y / up / down = within 60° of that direction (not
+  "the closest axis": the user's thumb leans towards the robot); **palm faces** an axis: flat, x, y (the axis only:
+  MediaPipe's left/right is unreliable from above); **thumb–index** angle range (thumb vs the index finger's base
+  bone); touch (thumb tip at fingertips — not used: the shape's scale drifts, palm widths 3–7 cm).
 - **Motion**: *held still* (pose for `hold` s, palm < 15 cm/s, fingers moving < 30°; fires once per showing);
   *swipe* in a direction (≥ 10 cm in 0.8 s, once per movement); *wave x / y / z* (the palm back and forth along the
-  axis: ≥ 2 turns of ≥ 3 cm within 1.5 s, mostly along it); *flex* (the four fingers' mean bend up and down: ≥ 2
-  turns of ≥ 40° within 1.5 s). Wave and flex are **active while the motion goes on**; the pose must match in 60 % of
-  that window's frames.
+  axis: ≥ 2 turns of ≥ 2 cm within 2 s, at least as much along it as sideways); *flex* (the four fingers' mean bend
+  up and down: ≥ 2 turns of ≥ 80° within 2 s). Wave and flex are **active while the motion goes on**; the pose must
+  match in 60 % of that window's frames; one moving gesture per hand (the first in the list wins: a beckon also
+  moves the palm along x).
 - **Repeat** (per mapping): the command runs again after each run while its gesture stays active (0.4 s grace) —
   continuous jogging in 10 mm steps, ending with the gesture. A stop gesture ends a repeat too.
 - **Commands**: stop, jog `<±x|±y|±z> <mm>`, claw open / close, home, give, take (hold this), close now, release,
@@ -314,13 +317,19 @@ flowchart LR
 
 | Gesture | Pose | Motion | Command |
 |---|---|---|---|
-| come here | thumb extended, palm flat | flex | jog +x 10 mm, repeat |
-| push back | all extended, palm facing x | wave x | jog −x 10 mm, repeat |
-| thumb left / right | fist, thumb pointing +y / −y | wave y | jog +y / −y, repeat |
-| thumb up / down | fist, thumb pointing up / down | wave z | jog +z / −z, repeat |
-| l shape | all extended, thumb–index ≥ 70° | held 0.5 s | claw open |
-| pinch fox | index + little extended, thumb tip on middle + ring tips | held 0.5 s | claw close |
+| come here | thumb extended | flex | jog +x 10 mm, repeat |
+| push back | palm facing x | wave x | jog −x 10 mm, repeat |
+| thumb left / right | fingers bent, thumb within 60° of −y / +y (the user's left = −y) | wave y | jog −y / +y, repeat |
+| thumb up / down | fingers bent, thumb within 60° of up / down | wave z | jog +z / −z, repeat |
+| l shape | all extended | held 0.5 s | claw open |
+| beak | four fingers half bent, thumb–index ≤ 50° | held 0.5 s | claw close |
 | fist | all curled | held 0.3 s | stop |
+
+Tuned on two 3-minute recordings of the user making each gesture (2026-10-04; recorder + replay scripts in the
+session scratchpad): measured bends L 42–108°, beak 121–170°, thumb gestures 145–236°, fist 250–284°; thumb
+extended 6–39°, in a fist 42–55°; thumb–index beak ~40°, thumb gestures 55–99°. Replayed, every gesture fires in its
+own segment and none in the gaps (push back is active in 13 % of the come-here frames). A thumb wave needs a
+visible movement (a few cm): held nearly still (3 cm/s) it is not a wave.
 
 - **Master switch**: header chip *gestures* or the Control tab's hands panel; switching on needs two clicks; **on
   at every control-center start** (user 2026-10-04; the switch state is not saved). Events go to the Control tab's
@@ -329,7 +338,7 @@ flowchart LR
   flex, speed, matching poses, active gestures); the gesture table (fingers on the first line; thumb, palm, spread,
   touch, motion, hold on the second; *capture* takes fingers, thumb direction, palm and touch from the hand under the
   camera); the mapping with *repeat*; the recognition limits. Checked live (`gestures.parse`), saved with a backup,
-  used at once. Tested on synthetic hands only so far; to be tuned on real hands.
+  used at once.
 
 **Config → boundaries**: a top view of the table (the colour image warped onto the table plane, 2.5 mm per pixel, x up /
 y left), vision zones (free quadrilaterals) and no-go zones (boxes: move, resize, heights, turn, name), checked
