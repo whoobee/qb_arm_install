@@ -178,6 +178,7 @@ In rough order of priority:
 | 2026-10-04 | **Jog by hand**: gestures get thumb direction, palm axis, spread, fingertip touch, wave / flex motions and repeat-while-active: come here / push back / thumb left-right-up-down jog continuously, L shape opens and fox closes the claw, fist stops. |
 | 2026-10-04 | Gestures **tuned on recordings of the user's hand**: recognition on MediaPipe's metric hand shape (new `Hand.shape`), half/bent finger states, thumb-direction cones, beak = close claw; replay: every gesture in its own segment, none in the gaps. |
 | 2026-10-04 | **Reach overlay** on the camera view: pick from above (8–44 cm, on the table) and hand-over with the claw level (to ~61 cm, at 10–30 cm height), from MoveIt IK, cached. |
+| 2026-10-04 | **Wrap grasps** for the semi-compliant claw: round bodies (≤ 64 mm) gripped at their widest point, deep in the claw (up to the inner bars), tried first; other narrow bodies get deeper grasps too. Not yet tried on the real arm. |
 
 ## Lessons learned (incidents and their fixes)
 

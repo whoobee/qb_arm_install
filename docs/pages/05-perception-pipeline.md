@@ -200,7 +200,31 @@ For each network grasp `Tg` (in the camera frame):
    the table plane under the object + `fingertip_clearance` (3 mm), move the grasp back along its approach until they
    are not.
 8. **Depth limit**: drop grasps whose TCP is more than `max_grasp_depth` (25 mm) below the object's top — deeper, the
-   claw's palm would hit the object.
+   object would reach the claw's inner bars (the wrap grasps, below, go up to them on purpose).
+
+### 4a. Wrap grasps for the semi-compliant claw (`wrap_grasps`, 2026-10-04)
+
+The claw is **semi-compliant**: each finger's parallelogram is held by a spring, so a finger closing on a round body
+turns a little and wraps around it, and the body may sit deep in the claw — up to the four-bar's inner bars (the
+rocker links, from 21.5 mm above `link_tcp` at ≥ 21.7 mm off the claw's axis; the bars and the claw's base close it
+off from ~30 mm; measured on the meshes). Gripping a round body only on its top slice (the old shallow grasps: the
+pads 15 mm below the top) puts the pads *above* its widest point: the squeeze pushes the fingers up over the curve
+and they slide off (an air blower lying down, 2026-10-04: fingers stopped at 33 mm, 549 mA — barely "gripped").
+
+```mermaid
+flowchart TB
+    P["object points above the table"] --> W{"short side (2–98 %)<br/>&le; wrap_max_width 64 mm?"}
+    W -- no --> X["no wrap grasps"]
+    W -- yes --> RD{"round?<br/>top 0.6–0.8 of the half-width out<br/>&ge; 0.12 x half-width below the middle<br/>(cylinder 0.29, flat top ~0)"}
+    RD -- yes --> DR["pads at half the height (the widest point),<br/>top &le; wrap_depth 27 mm into the claw"]
+    RD -- no --> DF["as deep as the bars allow:<br/>27 mm, 18 mm if wider than 38 mm"]
+    DR & DF --> G["straight down, closing across the short side,<br/>along the middle half of the long axis;<br/>+ closing drop, fingertips above the table,<br/>fingers beside the body (3 mm margin)"]
+```
+
+Round bodies: the wrap grasps are tried **first** (before any other grasp) and the top-slice and narrow-slice grasps
+are dropped; other objects narrow enough get wrap grasps scored 0.15 (ranked with the rest). Synthetic check: a 59 mm
+cylinder lying down → round, pads 24–48 mm above the table (its widest point at 30 mm), its top 23 mm into the claw;
+a 70 mm cylinder → no wrap grasp (does not fit between the open pads).
 
 ### 4b. Ring (rim) grasps for flat rings (`ring_grasps`)
 

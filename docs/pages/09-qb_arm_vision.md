@@ -269,6 +269,9 @@ spots in front of the palm (`handover_targets`), the handover zone (`in_zone`), 
 | `slice_grasp_score`, `slice_step` | 0.2, 0.01 m | narrow-slice grasps (flat/long objects) |
 | `fallback_grasp_score`, `top_slice` | 0.1, 0.03 m | top-slice fallback grasp |
 | `max_grasp_depth` | 0.025 m | network grasps: max TCP depth below the object top |
+| `wrap_grasp_score`, `wrap_grasp_flat_score` | 0.35, 0.15 | wrap grasps: round bodies (first), other narrow bodies |
+| `wrap_max_width`, `wrap_depth`, `wrap_flat_depth`, `wrap_bar_clear` | 0.064 m, 0.027 m, 0.018 m, 0.019 m | wrap grasps: measured width that fits the open claw; how far the body's top may reach into the claw (round / narrow; flat-sided wider than 2 × bar clear) |
+| `wrap_finger_margin`, `round_drop` | 0.003 m, 0.12 | wrap grasps: finger clearance beside the body; round test (top's drop at 0.7 × half-width / half-width) |
 | `finger_margin`, `max_finger_hits` | 0.01 m, 5 | finger-landing check |
 | `ring_grasp_score`, `ring_grasp_directions`, `min_ring_hole_radius` | 0.3, 12, 0.02 m | ring grasps |
 | `add_collision_objects` | true | put detected objects into the planning scene |
