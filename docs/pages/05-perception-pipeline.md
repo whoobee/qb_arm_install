@@ -213,18 +213,26 @@ and they slide off (an air blower lying down, 2026-10-04: fingers stopped at 33 
 
 ```mermaid
 flowchart TB
-    P["object points above the table"] --> W{"short side (2–98 %)<br/>≤ wrap_max_width 64 mm?"}
-    W -- no --> X["no wrap grasps"]
-    W -- yes --> RD{"round?<br/>top 0.6–0.8 of the half-width out<br/>≥ 0.12 x half-width below the middle<br/>(cylinder 0.29, flat top ~0)"}
-    RD -- yes --> DR["pads at half the height (the widest point),<br/>top ≤ wrap_depth 27 mm into the claw"]
-    RD -- no --> DF["as deep as the bars allow:<br/>27 mm, 18 mm if wider than 38 mm"]
-    DR & DF --> G["straight down, closing across the short side,<br/>along the middle half of the long axis;<br/>+ closing drop, fingertips above the table,<br/>fingers beside the body (3 mm margin)"]
+    P["object points above the table"] --> AX["axis search: every 10°,<br/>2 cm strips 1 cm apart across it;<br/>most round strips (then most that fit) wins"]
+    AX --> S{"per strip: width ≤ 64 mm?"}
+    S -- no --> X["no grasp there<br/>(e.g. a handle sticking out)"]
+    S -- yes --> D["the open claw comes down until the strip's top<br/>is at the inner bars: 27 mm into the claw<br/>(18 mm: flat-sided and wider than 38 mm)"]
+    D --> T["fingertips, closed to the strip's width − 5 mm,<br/>above the table + 5 mm (raise if not)"]
+    T --> M{"top still ≥ 15 mm<br/>into the claw?"}
+    M -- no --> X2["no grasp: the table stops the fingers<br/>(a low nozzle)"]
+    M -- yes --> G["straight down, closing across the strip;<br/>score: round 0.35 / flat 0.15<br/>× near the height-weighted centre of mass<br/>× depth reached"]
 ```
 
-Round bodies: the wrap grasps are tried **first** (before any other grasp) and the top-slice and narrow-slice grasps
-are dropped; other objects narrow enough get wrap grasps scored 0.15 (ranked with the rest). Synthetic check: a 59 mm
-cylinder lying down → round, pads 24–48 mm above the table (its widest point at 30 mm), its top 23 mm into the claw;
-a 70 mm cylinder → no wrap grasp (does not fit between the open pads).
+No closing-drop compensation: while the claw closes the fingers go further out and the inner bars press on the body —
+with the springs that is the wrap. Round body = at least two round strips (top 0.6–0.8 of the half-width out ≥ 0.12 ×
+half-width below the middle): then only round strips get grasps, they are tried first, and the top-slice and
+narrow-slice grasps are dropped. Every detection saves its objects' points to `~/.ros/qb_arm_vision_objects/` for
+checking grasps offline.
+
+Tuning on the real air blower (2026-10-04): first version (whole outline) → no wrap grasp (outline 168 × 232 mm with
+the handle); per strip along the outline's axis → strips cut diagonally, 1 round; axis search → round body, but the
+grasps raised by the closing drop and the fully-closed fingertip check (top only 12–15 mm in: the fingers did not
+wrap, the blower fell); now the body's top 27–28 mm into the claw, fingertips 3 mm above the table.
 
 ### 4b. Ring (rim) grasps for flat rings (`ring_grasps`)
 
