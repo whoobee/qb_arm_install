@@ -277,6 +277,18 @@ the claw now) with a draggable marker per spot (green) or pose (violet, with its
 (mm, degrees); *here* takes the current TCP; checked live (name, numbers, nothing inside a keep-out zone), saved with a
 backup of the old file; the next go-to uses it — no restart.
 
+**Reach overlay** (Control → camera, *reach*, on by default; 2026-10-04): how far the arm reaches, drawn over the
+live and the detection view. Joint 1 turns ±360°, so the reach depends only on the distance from the base axis: the
+control center asks MoveIt's IK (`/compute_ik`, collisions ignored) every 1 cm along one direction — **pick from
+above** (green, drawn on the table): the claw straight down at a grasp 3 cm above the table *and* its pre-grasp 10 or
+5 cm above it; **hand-over** (violet, dashed, drawn at the chosen height 10–30 cm above the table): the claw level
+with the table, pointing away from the base, in a natural configuration (as the handover: shoulder not leaning back,
+forearm not turned over). The widest run of reachable radii is the ring (single IK hits near the base left out).
+Computed in the background on first use (~25 s, needs the cell), cached in `~/.ros/qb_arm_reach.json`; *recompute*
+after a change to the robot model. Measured: pick 8–44 cm; level claw out to ~61 cm (its inner edge 25–38 cm by
+height). Kinematic reach only: obstacles, keep-out zones and the handover's own limits (object held 30–50 cm from the
+base, `handover_max_reach`) are not drawn.
+
 **Gestures** (2026-10-04; `qb_arm/gestures.py`, `config/gestures.yaml`, class `GestureControl` in the control
 center): hand poses and motions seen by the ceiling camera mapped to the page's commands — mainly to jog the claw by
 hand.
