@@ -246,7 +246,7 @@ pick executor on every change), servo current, servo and ESP32 temperature (ambe
 | Tab | What | ROS / system side |
 |---|---|---|
 | Cell | status, **start real / start sim / stop** (click twice to confirm), arm state / mode / error (code + meaning) / TCP, **recover arm** after a fault (clear error + warning, motors on, servo mode, ready; `/uf_api/*`), links (arm, claw, GPU server), services | `cell` script; `/ufactory/robot_states`; `ping`; `systemctl is-active` |
-| Claw | live servo current, angle, temperatures, supply voltage, Wi-Fi signal; charts (30 s, temperatures 5 min); **open / half / close / limp** | `/claw/*`; `/claw/command` (clamped to 0..0.96 rad: no squeezing), `/claw/torque` |
+| Claw | live servo current, angle, temperatures, supply voltage, Wi-Fi signal; charts (30 s, temperatures 5 min); **open / half / close / grip / limp** (close: pads touching, no squeezing; **grip**: 1.2 rad like a pick — closes on what is between the fingers and keeps a moderate push) | `/claw/*`; `/claw/command` (angles clamped to 0..0.96 rad; grip sends 1.2), `/claw/torque` |
 | Control | a prompt + **detect**; the camera panel: **live** video (MJPEG `/api/live.mjpg`, ~10–15 fps: the hand tracker's `/qb_arm_vision/camera_preview`, else the colour image scaled down; the tracked hands drawn in — skeleton, id, distance to the arm, red within 15 cm, amber = depth carried over; detected objects outlined; streamed only while the Control tab is visible) or the **last detection** image; the objects. **Pick mode** (claw empty): click an object (image or list) → a menu at the mouse: plan / pick. **Place mode** (claw holds something): click an object → into / on / next to (side) it; click free table → place at that point (the pixel's ray meets the measured table plane); back where picked, release; plan home / home / save pose as home. Plan = shown in RViz; go = the real arm, click twice. A mission log of the results | `/qb_arm_vision/detect`, `/pick`, `/place`, `/release`, `/home`, `/save_home`, `/held`, `/debug_image`, `/objects`, `/camera_preview`, `/hands`; `/kinect/rgb/camera_info` (`/kinect/rgb/image_raw` only without the tracker) |
 | Config | a menu on the left: **motion** (below), **spots** (below), **gestures** (below) and **boundaries** (vision / no-go zones on a top view of the table, below); later: current and temperature limits. Links: `#config/motion`, `#config/boundaries` (`#boundaries` still works) | `config/motion.yaml` + the pick executor's parameters; `config/boundaries.yaml` |
 | Log | the cell log, colour-coded by level and node, local times, cell starts marked; filters: level, node, text search (highlighted), error / warning counters; the controller's 150 Hz overrun warnings are hidden (they were 796 of 800 lines) | `~/.ros/log/qb_arm_cell.log` |
@@ -310,7 +310,7 @@ flowchart LR
   moves the palm along x).
 - **Repeat** (per mapping): the command runs again after each run while its gesture stays active (0.4 s grace) —
   continuous jogging in 10 mm steps, ending with the gesture. A stop gesture ends a repeat too.
-- **Commands**: stop, jog `<±x|±y|±z> <mm>`, claw open / close, home, give, take (hold this), close now, release,
+- **Commands**: stop, jog `<±x|±y|±z> <mm>`, claw open / close (close = grip: 1.2 rad, the pick's grip target), home, give, take (hold this), close now, release,
   place back, go to `<spot>`, detect `<prompt>`, pick `<object>`, recover — exactly as from the page (no
   confirmation); stop and close-now run even while another command runs, anything else is ignored (and logged) then.
 - **Default set** (the user's, directions as on the jog pad: +x away from the robot = towards the user, +y = left):
@@ -322,7 +322,7 @@ flowchart LR
 | thumb left / right | fingers bent, thumb within 60° of −y / +y (the user's left = −y) | wave y | jog −y / +y, repeat |
 | thumb up / down | fingers bent, thumb within 60° of up / down | wave z | jog +z / −z, repeat |
 | l shape | all extended | held 0.5 s | claw open |
-| beak | four fingers half bent, thumb–index ≤ 50° | held 0.5 s | claw close |
+| beak | four fingers half bent, thumb–index ≤ 50° | held 0.5 s | claw close **with grip force** (1.2 rad, like a pick: the firmware keeps ~0.17 rad of push on what is held) |
 | fist | all curled | held 0.3 s | stop |
 
 Tuned on two 3-minute recordings of the user making each gesture (2026-10-04; recorder + replay scripts in the
