@@ -257,6 +257,14 @@ only a sideways approach, out of reach; 5 cm tall → too low. Near the edge of 
 pick executor's IK check gives a claw not pointing down 6 tries of 0.1 s (KDL found a sponge 53 cm out in 1–3 of
 10 tries of 0.05 s, so the pick said "no reachable grasp"); real cell: plan-only pick of that sponge 3/3.
 
+**The pre-grasp of a side grasp** must leave the open fingertips clear of the object: the gripping point is on its
+axis and the fingertips reach 12 mm past it, so a fixed 5 cm (often the only one in reach far out) left them inside a
+deep object, and the planner, with claw–target contact allowed, knocked a sponge over on the way (2026-10-05). The
+executor now backs off at least as far as the object's outline reaches towards the claw + 12 mm + 2 cm, and plans the
+way to the pre-grasp with claw–target contact **not** allowed; only the straight approach may touch it (12 × 6 cm box:
+9.2 cm back with its long side towards the claw, 6.2 cm across). Far out such a pre-grasp may be out of reach: then
+no side grasp rather than a knocked-over object.
+
 **Placing an object held from the side**: the place comes from above as always, but the claw may turn about the
 vertical: first the turns that point it away from the robot base at the place (as the side grasps do; that way the
 level claw reaches ~60 cm), then ±25 / ±50°, then the usual 0 / 180° (as grasped / turned around). *Back where
