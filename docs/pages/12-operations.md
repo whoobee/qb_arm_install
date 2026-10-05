@@ -201,6 +201,8 @@ cd ~/prj/qb_arm_gripper && pio run -e gripper_ota -t upload
 | Symptom | Cause / fix |
 |---|---|
 | `cell start` refuses: leftover processes | an earlier run not started with `cell`: `cell stop --force` |
+| Camera / live view dead while the cell runs, log: `Failed to poll cameras: node cannot continue` | a capture timeout ends the Kinect driver; since 2026-10-05 the launch restarts it after 3 s (`respawn` in the driver fork's `driver.launch.py`) — the camera is back within ~10 s. Before: only a cell restart helped |
+| Control page: no live view, no hands, arm state stale — but the cell runs and `ros2 topic hz /kinect/rgb/image_raw` shows frames | the control center's ROS thread had died (a subscription destroyed while it waited — after a boundaries preview); fixed 2026-10-05 (it logs and spins on); before: `sudo systemctl restart qb-arm-control` |
 | `No Kinect images` / `Failed to open K4A device` | the camera was still held by a previous driver; `cell stop`, wait a few seconds, start again |
 | `No reachable grasp for <object>` | object too far (> ~33 cm from the base for top-down grasps), or the start state is invalid (check the log for `CheckStartStateCollision`) |
 | Every pick/place fails ("no reachable …"), log: `Joint 'jointN' from the starting state is outside bounds` | the arm stopped a hair past a ±2π limit (float rounding); the executor clamps values within 1 mrad of a limit (since 3edbb84); further out: jog that joint inward by hand |
