@@ -329,6 +329,7 @@ flowchart LR
 
 | Gesture | Pose | Motion | Command |
 |---|---|---|---|
+| rotate x / y / z | index finger straight, pointing along x / along y / up; the other fingers bent | circle x / y / z | jog rx / ry / rz 5° (roll / pitch / yaw about the world axis through the claw), repeat; the turn follows the circling direction (right-handed about the axis) |
 | come here | thumb extended | flex | jog +x 10 mm, repeat |
 | push back | palm facing x | wave x | jog −x 10 mm, repeat |
 | thumb left / right | fingers bent, thumb within 60° of −y / +y (the user's left = −y) | wave y | jog −y / +y, repeat |
