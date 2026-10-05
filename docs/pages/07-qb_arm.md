@@ -347,12 +347,10 @@ extended 6–39°, in a fist 42–55°; thumb–index beak ~40°, thumb gestures
 own segment and none in the gaps (push back is active in 13 % of the come-here frames). A thumb wave needs a
 visible movement (a few cm): held nearly still (3 cm/s) it is not a wave.
 
-- **Gesture zone** (Config → gestures → zone): a hand counts only with its palm inside a box (x / y / z ranges in
-  the world frame, z ≈ height above the table; *centre on my hand* puts a 30 × 30 cm box around the hand, from 10 cm
-  below it to 20 cm above) — or, without a box, over the vision workspace. A floor some cm above the table keeps hands
-  working on the table from making gestures. Drawn in 3D on a live camera preview there and on the Control tab's
-  camera (*gesture zone* checkbox; the page projects with `/api/camera_model`). Saved as `zone` in
-  `config/gestures.yaml` (`null` = the vision workspace).
+- **Hand zone** (Config → boundaries, *+ hand zone*, amber; `hand_zone` in `config/boundaries.yaml`): a hand counts for
+  gestures only with its palm over one of its polygons, at any height; without one, hands over the vision workspace
+  count. Edited like the vision zones (drag, corners, 5 mm snap), shown in the camera preview and on the Control tab's
+  camera (*hand zone*). The control center re-reads it every 10 s: no cell restart.
 - **Moves**: `jog_step` (mm, default 10) and `turn_step` (deg, default 5) — the step of every jog mapping without its
   own (`+x`, `rz`); a mapping can still set one (`+z 20`). Each step runs at the jog speed (Config → motion).
 - **Master switch**: header chip *gestures* or the Control tab's hands panel; switching on needs two clicks; **on
@@ -394,7 +392,13 @@ keep_out:                  # boxes the arm may never enter (MoveIt collision obj
   - name: pc               # ... or center: [x, y, z], size: [x, y, z], yaw_deg: 0
     min: [-0.55, -2.00, -0.90]
     max: [ 0.40, -0.70,  1.30]
+hand_zone:                 # optional: hands count for gestures only with the palm over these (any height)
+  polygons:
+    - [[0.15, 0.10], [0.45, 0.10], [0.45, 0.40], [0.15, 0.40]]
 ```
+
+The hand zone is only read by the control center (gestures, re-read every 10 s); the rest of the cell checks it like
+any other key but ignores it.
 
 - **Editing**: change the file, restart the cell. qb_arm is installed with `--symlink-install`, so no build. Check
   with `show_boundaries`.

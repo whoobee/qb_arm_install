@@ -180,7 +180,7 @@ In rough order of priority:
 | 2026-10-04 | **Reach overlay** on the camera view: pick from above (8–44 cm, on the table) and hand-over with the claw level (to ~61 cm, at 10–30 cm height), from MoveIt IK, cached. |
 | 2026-10-04 | **Wrap grasps** for the semi-compliant claw: round bodies (≤ 64 mm) gripped at their widest point, deep in the claw (up to the inner bars), tried first; other narrow bodies get deeper grasps too. Not yet tried on the real arm. |
 | 2026-10-05 | Gestures **rotate x / y / z**: index finger pointing along the axis + circling → the claw turns about that axis (5° steps, direction = circling direction). Not yet tried live. |
-| 2026-10-05 | Gestures: a configurable **gesture zone** (a box, drawn on the camera views) and **step sizes** (jog_step mm, turn_step deg). Rotate z skipped for now (the index pointing at the ceiling camera is not tracked). |
+| 2026-10-05 | Gestures: a **hand zone** in the boundaries (polygons, any height; editor + camera overlays) and **step sizes** (jog_step mm, turn_step deg). Rotate z skipped for now (the index pointing at the ceiling camera is not tracked). |
 
 ## Lessons learned (incidents and their fixes)
 
