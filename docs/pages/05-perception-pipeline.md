@@ -234,6 +234,28 @@ the handle); per strip along the outline's axis → strips cut diagonally, 1 rou
 grasps raised by the closing drop and the fully-closed fingertip check (top only 12–15 mm in: the fingers did not
 wrap, the blower fell); now the body's top 27–28 mm into the claw, fingertips 3 mm above the table.
 
+### 4c. Side grasps for tall, thin objects (`side_grasps`, 2026-10-05)
+
+A spray can or a bottle held at its top swings and the claw cannot wrap around it; held around its body it is
+stable. An object at least `side_min_height` (8 cm) tall and `side_aspect` (1.5) × its outline's longer side gets
+grasps from the side:
+
+- the claw **level**, pointing away from the robot base at the object's axis (the centre of its top, which the camera
+  sees whole), then yawed by `side_yaw_offsets_deg` (0, ±25, ±50°) for reach and obstacles;
+- the fingers closing horizontally around the body, link_tcp's x (the servo side) up;
+- at 50 / 65 / 35 % of its height, at least `side_min_z` (5 cm) above the table and 2.5 cm below its top;
+- only if the outline seen from above fits the open claw across the closing direction (≤ `wrap_max_width`; the
+  camera sees only the near half of the body at a given height, so the band there would under-measure); the fingers
+  checked beside the body with `wrap_finger_margin`.
+
+Scored `side_grasp_score` (0.4, less for yaw offsets and other heights) and tried **before every other grasp**; the
+top-down grasps stay as the fallback. The pick executor needs no change (the pre-grasp backs off along the claw —
+horizontally — then the straight approach; the lift goes up; a place comes from above). Reach: with the claw level
+about 25–60 cm from the base (the reach overlay's violet ring); 10 cm back along the claw is often out of reach near
+the inner edge, then the 5 cm pre-grasp is used. Synthetic: a 5.5 cm can → 15 side grasps, fingers clear; a 6.5 cm
+can → refused by the finger check (2.5 mm per side); an 8 cm bottle → "too wide around (80 mm > 64 mm)". Real cell:
+a 16 cm bottle → 15 side grasps, plan-only pick chose one (pre-grasp 5 cm).
+
 ### 4b. Ring (rim) grasps for flat rings (`ring_grasps`)
 
 Added after crash 1 (a network grasp tried to close along a tape roll's rim). Tape rolls lying flat are recognised
