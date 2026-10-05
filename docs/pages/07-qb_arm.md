@@ -306,7 +306,7 @@ flowchart LR
     N & Q --> X["bridge.run_* =<br/>the page's own commands"]
 ```
 
-- **Pose** (each part optional), measured on MediaPipe's **metric 3D hand shape** (`Hand.shape`, its world
+- **Pose** (each part optional; *index points* works like *thumb points*, plus *along x / y / z* = either way), measured on MediaPipe's **metric 3D hand shape** (`Hand.shape`, its world
   landmarks rotated into the world frame by the hand tracker — the image landmarks lifted with depth were distorted
   along the view: palms 4–7 cm wide, fingers bent 340°): fingers *extended* (bend < 115°) / *half* / *curled*
   (> 240°) / *bent* (half or curled) / *any* — bend = the angles between the finger's bones added up; the thumb
@@ -317,7 +317,10 @@ flowchart LR
 - **Motion**: *held still* (pose for `hold` s, palm < 15 cm/s, fingers moving < 30°; fires once per showing);
   *swipe* in a direction (≥ 10 cm in 0.8 s, once per movement); *wave x / y / z* (the palm back and forth along the
   axis: ≥ 2 turns of ≥ 2 cm within 2 s, at least as much along it as sideways); *flex* (the four fingers' mean bend
-  up and down: ≥ 2 turns of ≥ 80° within 2 s). Wave and flex are **active while the motion goes on**; the pose must
+  up and down: ≥ 2 turns of ≥ 80° within 2 s); *circle x / y / z* (the palm going round about the axis — its path
+  projected across the axis, the angle about the path's centre summed: ≥ 270° net within 2 s, mostly one way, radius
+  ≥ 2 cm; the turning direction, right-handed about the axis, is the gesture's sign: a jog turn without a sign, e.g.
+  `rz 5`, takes it). Wave, flex and circle are **active while the motion goes on**; the pose must
   match in 60 % of that window's frames; one moving gesture per hand (the first in the list wins: a beckon also
   moves the palm along x).
 - **Repeat** (per mapping): the command runs again after each run while its gesture stays active (0.4 s grace) —
