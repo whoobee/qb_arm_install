@@ -273,6 +273,7 @@ spots in front of the palm (`handover_targets`), the handover zone (`in_zone`), 
 | `wrap_max_width`, `wrap_depth`, `wrap_flat_depth`, `wrap_bar_clear` | 0.064 m, 0.027 m, 0.018 m, 0.019 m | wrap grasps: measured width that fits the open claw; how far the body's top may reach into the claw (round / narrow; flat-sided wider than 2 × bar clear) |
 | `wrap_finger_margin`, `round_drop` | 0.003 m, 0.12 | wrap grasps: finger clearance beside the body; round test (top's drop at 0.7 × half-width / half-width) |
 | `side_grasp_score`, `side_min_height`, `side_aspect`, `side_min_z`, `side_yaw_offsets_deg` | 0.4, 0.08 m, 1.5, 0.05 m, [0, ±25, ±50] | side grasps for tall, thin objects |
+| `side_far_radius` | 0.40 m | side grasps also for any object beyond this (≥ 7.5 cm tall): out of reach from above |
 | `wrap_squeeze`, `wrap_min_depth` | 0.005 m, 0.015 m | wrap grasps: fingertip table check closed this much past the width; the body at least this far into the claw |
 | `finger_margin`, `max_finger_hits` | 0.01 m, 5 | finger-landing check |
 | `ring_grasp_score`, `ring_grasp_directions`, `min_ring_hole_radius` | 0.3, 12, 0.02 m | ring grasps |

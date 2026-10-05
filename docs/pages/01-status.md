@@ -183,6 +183,7 @@ In rough order of priority:
 | 2026-10-05 | Gestures: a **hand zone** in the boundaries (polygons, any height; editor + camera overlays) and **step sizes** (jog_step mm, turn_step deg). Rotate z skipped for now (the index pointing at the ceiling camera is not tracked). |
 | 2026-10-05 | **MCP server** (`qb-arm-mcp.service`, :8082): the arm as 20 tools for an AI agent (Hermes on hbh-ai, voice via Home Assistant), through the control center, bearer token. |
 | 2026-10-05 | **Side grasps** for tall, thin objects (spray can, bottle): the claw level, fingers around the body at half height; tried first. Plan-only on the real cell OK; real pick not yet tried. |
+| 2026-10-05 | Side grasps also for objects **beyond the reach from above** (> 40 cm, ≥ 7.5 cm tall), with approaches along a long object's axis. Synthetic + IK checked; real far object not yet tried. |
 
 ## Lessons learned (incidents and their fixes)
 

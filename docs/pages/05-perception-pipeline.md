@@ -248,6 +248,13 @@ grasps from the side:
   camera sees only the near half of the body at a given height, so the band there would under-measure); the fingers
   checked beside the body with `wrap_finger_margin`.
 
+**Beyond the reach from above** (the green ring of the reach overlay, ~44 cm) the level claw still reaches ~60 cm
+(the violet ring): any object whose centre is beyond `side_far_radius` (0.40 m) gets side grasps too, whatever its
+shape, when it is at least `side_min_z` + 2.5 cm (7.5 cm) tall. Approaches then also run along the object's long axis
+(within 90° of the direction from the base), so a long object is closed across its narrow side. Synthetic + MoveIt IK:
+a 12 × 5 × 9 cm box 55 cm out, pointing at the base → one reachable side grasp; the same box lying across 50 cm out →
+only a sideways approach, out of reach; 5 cm tall → too low.
+
 Scored `side_grasp_score` (0.4, less for yaw offsets and other heights) and tried **before every other grasp**; the
 top-down grasps stay as the fallback. The pick executor needs no change (the pre-grasp backs off along the claw —
 horizontally — then the straight approach; the lift goes up; a place comes from above). Reach: with the claw level
