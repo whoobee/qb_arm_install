@@ -253,7 +253,9 @@ grasps from the side:
 shape, when it is at least `side_min_z` + 2.5 cm (7.5 cm) tall. Approaches then also run along the object's long axis
 (within 90° of the direction from the base), so a long object is closed across its narrow side. Synthetic + MoveIt IK:
 a 12 × 5 × 9 cm box 55 cm out, pointing at the base → one reachable side grasp; the same box lying across 50 cm out →
-only a sideways approach, out of reach; 5 cm tall → too low.
+only a sideways approach, out of reach; 5 cm tall → too low. Near the edge of the reach few arm configurations get there: the
+pick executor's IK check gives a claw not pointing down 6 tries of 0.1 s (KDL found a sponge 53 cm out in 1–3 of
+10 tries of 0.05 s, so the pick said "no reachable grasp"); real cell: plan-only pick of that sponge 3/3.
 
 Scored `side_grasp_score` (0.4, less for yaw offsets and other heights) and tried **before every other grasp**; the
 top-down grasps stay as the fallback. The pick executor needs no change (the pre-grasp backs off along the claw —
