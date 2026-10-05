@@ -333,7 +333,7 @@ flowchart LR
 | Gesture | Pose | Motion | Command |
 |---|---|---|---|
 | rotate x / y / z | index finger straight, pointing along x / along y / up; the other fingers bent | circle x / y / z | jog rx / ry / rz 5° (roll / pitch / yaw about the world axis through the claw), repeat; the turn follows the circling direction (right-handed about the axis) |
-| come here | thumb extended | flex | jog +x 10 mm, repeat |
+| come here | thumb extended | flex | jog +x (jog_step), repeat |
 | push back | palm facing x | wave x | jog −x 10 mm, repeat |
 | thumb left / right | fingers bent, thumb within 60° of −y / +y (the user's left = −y) | wave y | jog −y / +y, repeat |
 | thumb up / down | fingers bent, thumb within 60° of up / down | wave z | jog +z / −z, repeat |
@@ -347,6 +347,14 @@ extended 6–39°, in a fist 42–55°; thumb–index beak ~40°, thumb gestures
 own segment and none in the gaps (push back is active in 13 % of the come-here frames). A thumb wave needs a
 visible movement (a few cm): held nearly still (3 cm/s) it is not a wave.
 
+- **Gesture zone** (Config → gestures → zone): a hand counts only with its palm inside a box (x / y / z ranges in
+  the world frame, z ≈ height above the table; *centre on my hand* puts a 30 × 30 cm box around the hand, from 10 cm
+  below it to 20 cm above) — or, without a box, over the vision workspace. A floor some cm above the table keeps hands
+  working on the table from making gestures. Drawn in 3D on a live camera preview there and on the Control tab's
+  camera (*gesture zone* checkbox; the page projects with `/api/camera_model`). Saved as `zone` in
+  `config/gestures.yaml` (`null` = the vision workspace).
+- **Moves**: `jog_step` (mm, default 10) and `turn_step` (deg, default 5) — the step of every jog mapping without its
+  own (`+x`, `rz`); a mapping can still set one (`+z 20`). Each step runs at the jog speed (Config → motion).
 - **Master switch**: header chip *gestures* or the Control tab's hands panel; switching on needs two clicks; **on
   at every control-center start** (user 2026-10-04; the switch state is not saved). Events go to the Control tab's
   feed.
