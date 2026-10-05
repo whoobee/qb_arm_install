@@ -20,6 +20,7 @@ DO_ESP=1
 DO_MICROROS=1
 DO_DOCS=1
 DO_CONTROL=1
+DO_MCP=1
 DO_HANDS=1
 DO_CLAW_AP=1
 GRIPPER_DIR="$HOME/prj/qb_arm_gripper"
@@ -50,6 +51,7 @@ Usage: ./install.sh [options]
   --no-microros-agent   skip the micro-ROS agent (build + ros2-microros-agent.service) for the gripper
   --no-docs             don't install the documentation server (qb-arm-docs.service, port 8080)
   --no-control          don't install the control center (qb-arm-control.service, port 8081)
+  --no-mcp              don't install the MCP server for AI agents (qb-arm-mcp.service, port 8082)
   --no-hands            skip the hand tracker's Python environment (MediaPipe, ~/prj/venvs/hands)
   --no-claw-ap          don't set up qbarm-claw, the access point for the claw (needs a USB Wi-Fi adapter)
   --dds-iface IFACE     the one network interface ROS (Fast DDS) uses besides loopback / shared memory
@@ -74,6 +76,7 @@ while [ $# -gt 0 ]; do
         --no-microros-agent) DO_MICROROS=0 ;;
         --no-docs) DO_DOCS=0 ;;
         --no-control) DO_CONTROL=0 ;;
+        --no-mcp) DO_MCP=0 ;;
         --no-hands) DO_HANDS=0 ;;
         --no-claw-ap) DO_CLAW_AP=0 ;;
         --dds-iface) DDS_IFACE="$2"; shift ;;
@@ -383,6 +386,27 @@ if [ $DO_CONTROL -eq 1 ]; then
     sudo systemctl enable qb-arm-control.service
     sudo systemctl restart qb-arm-control.service
     info "status: $(systemctl is-active qb-arm-control.service)"
+fi
+
+if [ "$DO_MCP" = 1 ]; then
+    # The arm as MCP tools for an AI agent (Hermes Agent on hbh-ai, voice through Home Assistant): its own venv with
+    # the mcp package (2.0, as Hermes), a bearer token, a systemd service; it only talks to the control center
+    step "MCP server (systemd: qb-arm-mcp.service, http://<this machine>:8082/mcp)"
+    MCPV="$HOME/prj/venvs/mcp"
+    [ -x "$MCPV/bin/python" ] || python3 -m venv "$MCPV"
+    "$MCPV/bin/pip" install -q "mcp==2.0.0"
+    mkdir -p "$HOME/.config/qbarm" && chmod 700 "$HOME/.config/qbarm"
+    if [ ! -s "$HOME/.config/qbarm/mcp_token" ]; then
+        python3 -c 'import secrets; print(secrets.token_urlsafe(32))' > "$HOME/.config/qbarm/mcp_token"
+        chmod 600 "$HOME/.config/qbarm/mcp_token"
+        info "new token in ~/.config/qbarm/mcp_token: give it to the agent (Authorization: Bearer <token>)"
+    fi
+    sed "s#@USER@#$USER#g; s#@HOME@#$HOME#g" "$HERE/config/qb-arm-mcp.service.in" \
+        | sudo tee /etc/systemd/system/qb-arm-mcp.service >/dev/null
+    sudo systemctl daemon-reload
+    sudo systemctl enable qb-arm-mcp.service
+    sudo systemctl restart qb-arm-mcp.service
+    info "status: $(systemctl is-active qb-arm-mcp.service)"
 fi
 
 if [ "$DO_HANDS" = 1 ]; then

@@ -1,0 +1,14 @@
+[Unit]
+Description=qBArm MCP server (http://<host>:8082/mcp): the robot arm as tools for an AI agent (Hermes), via the control center
+After=network-online.target qb-arm-control.service
+Wants=network-online.target
+
+[Service]
+User=@USER@
+# The bearer token every client must send: @HOME@/.config/qbarm/mcp_token (made by install.sh, mode 600)
+ExecStart=@HOME@/prj/venvs/mcp/bin/python @HOME@/prj/ros2_ws/src/qb_arm/mcp/qbarm_mcp.py --port 8082 --control http://127.0.0.1:8081
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
