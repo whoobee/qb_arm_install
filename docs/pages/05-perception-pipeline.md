@@ -257,6 +257,11 @@ only a sideways approach, out of reach; 5 cm tall → too low. Near the edge of 
 pick executor's IK check gives a claw not pointing down 6 tries of 0.1 s (KDL found a sponge 53 cm out in 1–3 of
 10 tries of 0.05 s, so the pick said "no reachable grasp"); real cell: plan-only pick of that sponge 3/3.
 
+**Placing an object held from the side**: the place comes from above as always, but the claw may turn about the
+vertical: first the turns that point it away from the robot base at the place (as the side grasps do; that way the
+level claw reaches ~60 cm), then ±25 / ±50°, then the usual 0 / 180° (as grasped / turned around). *Back where
+picked* keeps the claw as it was first. The place message gives the turn in degrees.
+
 Scored `side_grasp_score` (0.4, less for yaw offsets and other heights) and tried **before every other grasp**; the
 top-down grasps stay as the fallback. The pick executor needs no change (the pre-grasp backs off along the claw —
 horizontally — then the straight approach; the lift goes up; a place comes from above). Reach: with the claw level
