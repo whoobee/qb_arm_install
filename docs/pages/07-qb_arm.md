@@ -367,6 +367,48 @@ y left), vision zones (free quadrilaterals) and no-go zones (boxes: move, resize
 live with `boundaries.load`, previewed in the camera view (`image_outside` + `draw` on a fresh snapshot), saved with
 a backup of the old file, optionally with a cell restart.
 
+### `mcp/qbarm_mcp.py` — the arm as MCP tools for an AI agent (port 8082)
+
+An MCP server (Streamable HTTP, `mcp` 2.0 in `~/prj/venvs/mcp`, systemd `qb-arm-mcp.service`) so an agent — Hermes
+Agent on hbh-ai, driven by voice through Home Assistant — can run the arm. Every tool goes through the control
+center's HTTP API (the control page's own commands, with the same checks); nothing talks to ROS. Every request needs
+`Authorization: Bearer <token>` (`~/.config/qbarm/mcp_token`, mode 600, made by `install.sh`).
+
+```mermaid
+flowchart LR
+    V["voice<br/>Home Assistant"] --> H["Hermes Agent<br/>hbh-ai"]
+    H -- "MCP Streamable HTTP<br/>Bearer token" --> M["qbarm_mcp.py<br/>qBArm :8082/mcp"]
+    M -- "HTTP" --> C["control center<br/>:8081"]
+    C --> R["cell: pick executor,<br/>detector, claw"]
+```
+
+| Tool | What it does |
+|---|---|
+| `status`, `look`, `list_objects`, `list_places` | read only: state, detection (`look` takes phrases like "tape roll, bin"), objects with ids and reach, named places |
+| `pick`, `place`, `release`, `hand_over`, `take_from_hand`, `close_claw_now` | the pick / place / handover commands; `place`: back, on / into / next_to a reference, or at a point |
+| `go_home`, `go_to`, `jog`, `turn`, `claw` | moves; `jog` ≤ 50 mm and `turn` ≤ 15° per call (not collision-checked); `claw`: open, close, grip |
+| `stop` | stops the arm at once — also while another tool is still moving it (the tools are async) |
+| `recover_arm`, `gesture_control`, `start_robot`, `stop_robot` | arm fault recovery, gestures on / off, the cell |
+
+Voice-friendly: an object may be named as said ("the tape roll": matched to the last detection, the nearest one that
+can be picked; detected first if not seen); directions and sides are the user's, who faces the robot from +x (`left`
+= their left = −y, `towards me` = +x); answers are one or two spoken sentences. Read-only tools carry
+`readOnlyHint` (an agent's approval policy can let them through and ask for the rest).
+
+Hermes (`~/.hermes/config.yaml` on hbh-ai; the token in `~/.hermes/.env` as `QBARM_MCP_TOKEN`):
+
+```yaml
+mcp_servers:
+  qbarm:
+    url: "http://qbarm.local:8082/mcp"
+    headers:
+      Authorization: "Bearer ${QBARM_MCP_TOKEN}"
+    timeout: 330          # a pick or a handover takes up to a few minutes
+```
+
+Tested 2026-10-05 with the `mcp` client: no token → 401; 20 tools listed; `status` / `list_objects` / `list_places`;
+"the tape roll" → `tape_roll_1`; `stop` answered in 0.2 s while a `look` took 4.1 s in another session.
+
 ### `show_boundaries`
 
 `ros2 run qb_arm show_boundaries [--output boundaries.png]`: the live camera image with the vision workspace (green,
