@@ -186,6 +186,7 @@ In rough order of priority:
 | 2026-10-05 | Side grasps also for objects **beyond the reach from above** (> 40 cm, ≥ 7.5 cm tall), with approaches along a long object's axis. Synthetic + IK checked; real far object not yet tried. |
 | 2026-10-05 | Place of an object held from the side: the claw turns to point away from the base at the place (±25/±50°, then 0/180°). Offline checked; real place not yet tried. |
 | 2026-10-06 | IK solver **TRAC-IK** instead of KDL: KDL found no arm pose for level-claw poses in front of the base ("edge of the table" (0.42, −0.04, 0.10) 0/4) and for "work area"; TRAC-IK 4/4 each, both go-tos plan. Back to KDL: `cell start real ik_solver:=kdl`. |
+| 2026-10-06 | Go-to clears the octomap **before** its reachability check: the arm's ghost voxels where it last stopped (link4/5 at "edge of the table") made that pose look unreachable right after leaving it. |
 
 ## Lessons learned (incidents and their fixes)
 
