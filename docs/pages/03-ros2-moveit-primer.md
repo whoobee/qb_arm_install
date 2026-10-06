@@ -106,8 +106,12 @@ robot base, first has to be moved to a ready pose.
 **Forward kinematics** (joint angles → where is the TCP?) is easy and unique. **Inverse kinematics** asks the
 opposite: *which joint angles put `link_tcp` at this pose?* There may be several solutions (elbow up/down, wrist
 flipped) or none (out of reach). `/compute_ik` returns one solution, optionally only collision-free ones. The Lite6
-config uses the **KDL** solver: a numerical solver that iterates from a seed state (5 ms timeout, 3 attempts per
-call), so it can occasionally miss a solution that exists. The pick
+cell uses **TRAC-IK** (since 2026-10-06): it runs KDL's numerical solver (iterating from a seed state) and an SQP
+solver side by side, 20 ms per try, 3 attempts per call. The xArm config's plain **KDL** (5 ms) found no solution in a
+band of level-claw poses in front of the base, e.g. (0.42, −0.04, 0.10) rpy (0, 90, 0) 0/4, which TRAC-IK solves
+4/4. Back to KDL: `cell start real ik_solver:=kdl` (the `ik_solver` launch argument, set in
+`qb_arm/launch/lite6_moveit.launch.py`; the xArm `kinematics.yaml` is not edited). Both can still miss a solution
+that exists now and then. The pick
 uses it as a **millisecond reachability check** before spending seconds on planning.
 
 A 6-joint arm can reach a position with a given orientation only in a limited region. For the Lite6 with the claw,

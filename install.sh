@@ -152,6 +152,7 @@ apt_install \
     ros-jazzy-desktop \
     ros-dev-tools \
     ros-jazzy-moveit \
+    ros-jazzy-trac-ik-kinematics-plugin \
     ros-jazzy-ros-gz \
     python3-numpy \
     python3-scipy \

@@ -30,6 +30,7 @@ cell status                 # anything running? leftovers?
 cell start real             # real arm + real claw + camera + MoveIt + RViz + vision
 cell start sim              # simulated arm and claw (camera is real)
 cell start real obstacles:=false  # extra launch arguments pass through (here: no camera octomap)
+cell start real ik_solver:=kdl    # the xArm's KDL IK solver instead of TRAC-IK (the default)
 cell log                    # follow the output
 cell stop                   # stop everything (waits until it is gone)
 cell stop --force           # also kill leftovers from runs not started with cell

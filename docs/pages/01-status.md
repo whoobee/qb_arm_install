@@ -119,7 +119,7 @@ In rough order of priority:
    - The handover pose search sometimes skips the preferred 34° tilt and takes 52° / 69°: KDL's IK gets 0.2 s per
      pose and fails more often right after a plan, while the machine is busy (load ~5 of 8 cores: Kinect driver,
      hand tracker, the control page's live view, an idle pick executor at ~50 %, RViz animating the plan). The log
-     line *Handover pose: … (skipped: …)* shows why candidates failed.
+     line *Handover pose: … (skipped: …)* shows why candidates failed. (Measured with KDL; TRAC-IK since 2026-10-06.)
 1. **Grip sensing — measured and in use (2026-10-01).** Empty vs tape / thin cardboard / sponge, 3 trials each: the
    empty check uses stop position and holding current together (see [pick execution](06-pick-execution.md)). Next:
    re-check the empty baseline with a warm servo (~50 °C), then force control by current and a stall guard that
@@ -185,6 +185,7 @@ In rough order of priority:
 | 2026-10-05 | **Side grasps** for tall, thin objects (spray can, bottle): the claw level, fingers around the body at half height; tried first. Plan-only on the real cell OK; real pick not yet tried. |
 | 2026-10-05 | Side grasps also for objects **beyond the reach from above** (> 40 cm, ≥ 7.5 cm tall), with approaches along a long object's axis. Synthetic + IK checked; real far object not yet tried. |
 | 2026-10-05 | Place of an object held from the side: the claw turns to point away from the base at the place (±25/±50°, then 0/180°). Offline checked; real place not yet tried. |
+| 2026-10-06 | IK solver **TRAC-IK** instead of KDL: KDL found no arm pose for level-claw poses in front of the base ("edge of the table" (0.42, −0.04, 0.10) 0/4) and for "work area"; TRAC-IK 4/4 each, both go-tos plan. Back to KDL: `cell start real ik_solver:=kdl`. |
 
 ## Lessons learned (incidents and their fixes)
 

@@ -31,7 +31,8 @@
 | **Grounding DINO** | Open-vocabulary object detector: text prompt → boxes |
 | **ICP** | Iterative Closest Point: aligns a point cloud to a model by repeatedly matching nearest points |
 | **Intrinsics (K)** | Camera focal lengths and principal point (fx, fy, cx, cy) |
-| **KDL** | The numerical IK solver used for the Lite6 |
+| **KDL** | The xArm config's numerical IK solver; `ik_solver:=kdl` brings it back |
+| **TRAC-IK** | The cell's IK solver: KDL and an SQP solver side by side, the first answer wins |
 | **Keep-out zone** | A box in `config/boundaries.yaml` the arm may never enter: a MoveIt collision object `keepout_<name>` |
 | **`link_tcp`** | The claw's tool centre point: between the open pads, z along the fingers, y closing |
 | **LX protocol** | Hiwonder bus-servo serial protocol (`0x55 0x55`, id, length, command, params, checksum) |
