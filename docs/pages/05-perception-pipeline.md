@@ -265,6 +265,15 @@ way to the pre-grasp with claw–target contact **not** allowed; only the straig
 9.2 cm back with its long side towards the claw, 6.2 cm across). Far out such a pre-grasp may be out of reach: then
 no side grasp rather than a knocked-over object.
 
+**The way in** (2026-10-06, after a finger caught a 3 × 8 cm black cylinder's top and the claw then closed on
+nothing): the claw goes **level, straight above the pre-grasp** (`side_above`, 6 cm over the object's top), **straight
+down** to it (collision-checked, no contact with the target), then **straight in** — never over the object (a free
+path had turned the level claw just over it; MoveIt keeps no distance, and a black object's top is measured low). And
+the grasp is **pulled back by the closing travel** for its width: the fingers also move out along the claw while they
+close, so placed on the axis the pads met the cylinder ~16 mm past it and squeezed it away (30 mm: 16 mm, 45 mm:
+12 mm, 60 mm: 6 mm) — as grasps from above compensate the same travel. Side grasps from `side_min_height` 6.5 cm, the
+gripping point ≥ `side_top_margin` 1.5 cm below the top.
+
 **Placing an object held from the side**: the place comes from above as always, but the claw may turn about the
 vertical: first the turns that point it away from the robot base at the place (as the side grasps do; that way the
 level claw reaches ~60 cm), then ±25 / ±50°, then the usual 0 / 180° (as grasped / turned around). *Back where
