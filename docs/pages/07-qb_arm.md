@@ -386,9 +386,9 @@ flowchart LR
 |---|---|
 | `status`, `look`, `list_objects`, `list_places` | read only: state, detection (`look` takes phrases like "tape roll, bin"), objects with ids and reach, named places |
 | `pick`, `place`, `release`, `hand_over`, `take_from_hand`, `close_claw_now` | the pick / place / handover commands; `place`: back, on / into / next_to a reference, or at a point |
-| `go_home`, `go_to`, `jog`, `turn`, `claw` | moves; `jog` ≤ 50 mm and `turn` ≤ 15° per call (not collision-checked); `claw`: open, close, grip |
+| `go_home`, `go_to`, `jog`, `turn`, `claw` | moves; `jog` up to 300 mm and `turn` up to ±180°, done in equal steps within the jog's limits (≤ 50 mm, ≤ 15°) one after the other — "turn 90°" = 6 × 15°; a failed step ends it (not collision-checked); `claw`: open, close, grip |
 | `stop` | stops the arm at once — also while another tool is still moving it (the tools are async) |
-| `recover_arm`, `gesture_control`, `start_robot`, `stop_robot` | arm fault recovery, gestures on / off, the cell |
+| `recover_arm`, `gesture_control`, `start_cell`, `stop_cell` | arm fault recovery, gestures on / off, enable / disable the cell (the robot software) |
 
 Voice-friendly: an object may be named as said ("the tape roll": matched to the last detection, the nearest one that
 can be picked; detected first if not seen); directions and sides are the user's, who faces the robot from +x (`left`
