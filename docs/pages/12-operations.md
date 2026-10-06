@@ -73,11 +73,13 @@ it can't be checked (place elsewhere, or move the arm away first).
 
 ## Holding things: jog, spots and poses
 
-Control tab, with the cell running: **jog** moves the claw (and whatever it holds) in small straight steps — pick the
-step, click the direction (or tick *keyboard*: arrows, PgUp / PgDn, Q / E). Jog steps are **not collision-checked** — watch the
-claw. To come back to a place, type a name under
-**spots & poses** and *save here as spot* (position) or *as pose* (position + orientation); *go* (click twice) takes
-the arm there. Exact values and dragging on a top view: Config → spots.
+Control tab, with the cell running and the switch on **real** (in *plan* every button only plans, shown in RViz):
+the **jog pad** over the camera image moves the claw (and whatever it holds) in small straight steps — pick the step,
+click a direction (inner ring: forward / back / left / right; outer ring: tilt; left bar: up / down; right bar: turn;
+**home** in the middle, click twice), or tick *keys*: arrows, PgUp / PgDn, Q / E. Jog steps are **not
+collision-checked** — watch the claw. To come back to a place: **+ save here** in the bar at the bottom of the image,
+a name, *as spot* (position) or *as pose* (position + orientation); its button under *go to* (click twice) takes the
+arm there. Exact values and dragging on a top view: Config → spots.
 
 ```bash
 ros2 service call /qb_arm_vision/jog qb_arm_vision_interfaces/srv/Jog "{translation: {z: 0.005}}"
@@ -86,7 +88,7 @@ ros2 service call /qb_arm_vision/go_to qb_arm_vision_interfaces/srv/GoTo "{name:
 
 ## Handing objects over: give and hold this
 
-Control tab, claw panel, with the cell running and the hand tracker on (the live view shows your hands):
+Control tab, the bar at the bottom of the camera image, switch on **real**, with the cell running and the hand tracker on (the live view shows your hands):
 
 - **give to me** (click twice; the claw holds something): hold your hand out still in front of the arm, 34–75 cm from
   its base, not over the desk. The arm comes slowly and stops with the object ~10 cm in front of your palm. Take it:
@@ -100,7 +102,7 @@ Control tab, claw panel, with the cell running and the hand tracker on (the live
   to put it there (*back where picked* doesn't exist for it). Nothing put in within 30 s: the claw stays open there.
 - **stop** stops the arm where it is. It also stops by itself when a hand comes within 5 cm of the arm. When your hand
   moves or the camera loses it, it pauses and goes on once your hand is still again (at most 3 times).
-- **plan give** / **plan take** only plan the way to your hand (RViz).
+- With the switch on **plan**, *give to me* / *hold this* only plan the way to your hand (RViz).
 
 ```bash
 ros2 service call /qb_arm_vision/handover qb_arm_vision_interfaces/srv/Handover "{action: take, plan_only: false}"
@@ -165,8 +167,8 @@ ros2 topic echo --once /ufactory/robot_states | grep -E "^(state|mode|err):"
 ```
 
 1. Look at the arm: what did it touch? Is it clear to move?
-2. Clear the error: the control page's Cell tab → **recover arm** (click twice; an arm fault also shows as a red
-   *arm fault C…* chip in the status bar, with its meaning on the Cell tab). It clears the error and the warning,
+2. Clear the error: the control page's status bar → **arm · recover** (shows the fault code, C…; click twice), or the
+   Status tab → **recover arm** (with the fault's meaning). It clears the error and the warning,
    turns the motors on and sets servo mode, state ready — the arm doesn't move; the driver re-activates the
    trajectory controller once the arm is ready. Or: UFACTORY app / manual mode. If the arm has to be moved clear,
    by hand or in the app — **not** to the zero pose.
