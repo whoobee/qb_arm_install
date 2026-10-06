@@ -76,7 +76,7 @@ it can't be checked (place elsewhere, or move the arm away first).
 Control tab, with the cell running and the switch on **real** (in *plan* every button only plans, shown in RViz):
 the **jog pad** over the camera image moves the claw (and whatever it holds) in small straight steps — pick the step,
 click a direction (inner ring: forward / back / left / right; outer ring: tilt; left bar: up / down; right bar: turn;
-**home** in the middle, click twice), or tick *keys*: arrows, PgUp / PgDn, Q / E. Jog steps are **not
+**home** in the middle, click twice; **open** / **close** the claw under it), or tick *keys*: arrows, PgUp / PgDn, Q / E. Jog steps are **not
 collision-checked** — watch the claw. To come back to a place: **+ save here** in the bar at the bottom of the image,
 a name, *as spot* (position) or *as pose* (position + orientation); its button under *go to* (click twice) takes the
 arm there. Exact values and dragging on a top view: Config → spots.
