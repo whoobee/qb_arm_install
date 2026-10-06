@@ -111,7 +111,15 @@ solver side by side, 20 ms per try, 3 attempts per call. The xArm config's plain
 band of level-claw poses in front of the base, e.g. (0.42, −0.04, 0.10) rpy (0, 90, 0) 0/4, which TRAC-IK solves
 4/4. Back to KDL: `cell start real ik_solver:=kdl` (the `ik_solver` launch argument, set in
 `qb_arm/launch/lite6_moveit.launch.py`; the xArm `kinematics.yaml` is not edited). Both can still miss a solution
-that exists now and then. The pick
+that exists now and then.
+
+**Joint 5 is limited to ±115° for planning** (the Lite6 goes to ±124°; launch argument `joint5_limit`, set in the
+robot description by `lite6_moveit.launch.py`, so MoveIt, both IK solvers and the pick executor agree). The Lite6
+controller runs **its own self-collision check** — on, with no tool model (the claw isn't in it), on simplified link
+shapes: with the wrist folded past ~120° it sees the wrist hit the forearm where MoveIt's meshes are still apart, and
+stops the arm with C22 (2026-10-06, −122.5° on a side grasp's way down). The reach overlay is the same with the limit;
+very low, close-in side grasps that need the fold are now refused as unreachable. An arm left past ±115° (moved by
+hand) can't be planned from: `cell start real joint5_limit:=124`, home, restart. The pick
 uses it as a **millisecond reachability check** before spending seconds on planning.
 
 A 6-joint arm can reach a position with a given orientation only in a limited region. For the Lite6 with the claw,

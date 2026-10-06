@@ -172,6 +172,9 @@ flowchart LR
   its limit is not handled (task fails).
 - **Never** cleared automatically: `auto_recover_never` = C1 (e-stop button), C2 (emergency IO) — otherwise the arm
   would drive on by itself once the e-stop is released. The page's **stop** during a fault also ends the task.
+- **Cleared, not retried**: `auto_recover_no_retry` = C22 (self-collision by the controller's own, simplified arm
+  model), C23 (joint limit): the controller refuses the motion itself, so the same step would fault again (2026-10-06:
+  a side grasp's way down, 3 retries, 3 × C22). The error is cleared and the task fails at once.
 - An error left from before is cleared the same way at the start of the next motion request.
 - The result message lists the recoveries: `… (recovered automatically from C31 during approach)`; the log has one
   `arm error C… - clearing it automatically` warning per recovery.

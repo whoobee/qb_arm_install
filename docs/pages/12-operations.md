@@ -31,6 +31,7 @@ cell start real             # real arm + real claw + camera + MoveIt + RViz + vi
 cell start sim              # simulated arm and claw (camera is real)
 cell start real obstacles:=false  # extra launch arguments pass through (here: no camera octomap)
 cell start real ik_solver:=kdl    # the xArm's KDL IK solver instead of TRAC-IK (the default)
+cell start real joint5_limit:=124 # joint5 (wrist bend) over its full range, not +-115 deg (C22 risk; to get out of a fold)
 cell log                    # follow the output
 cell stop                   # stop everything (waits until it is gone)
 cell stop --force           # also kill leftovers from runs not started with cell
