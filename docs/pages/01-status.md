@@ -189,6 +189,7 @@ In rough order of priority:
 | 2026-10-06 | Go-to clears the octomap **before** its reachability check: the arm's ghost voxels where it last stopped (link4/5 at "edge of the table") made that pose look unreachable right after leaving it. |
 | 2026-10-06 | Control page reworked: one **plan / real** switch instead of doubled buttons; over the camera image a **jog pad** top left (home in the middle, claw open / close under it, ring of moves, ring of tilts, up/down and turn bars) and an **action bar** (go to spots, save here, save as home, hold this / give / back / release, stop); log and objects below the image; **Status** tab = old Cell + Claw tabs; the status bar's CELL chip starts / stops the cell, the **arm · recover** chip recovers the arm. |
 | 2026-10-06 | **C22 self-collision** on a side grasp: the Lite6 controller's own check (simplified links, no claw) stopped the wrist folded to −122.5°, which MoveIt found free. **joint5 limited to ±115° for planning** (`joint5_limit`, reach overlay unchanged; the wheel's side grasp is now "no reachable grasp" instead of a fault), and C22 / C23 are cleared but **not retried** (`auto_recover_no_retry`). |
+| 2026-10-09 | **Go here**: click free table in the camera image → the arm goes above that point (height in cm, default 10; claw down or as it is). Plan-only checked on the real cell (down / as it is OK, keep-out and out-of-reach refused). |
 
 ## Lessons learned (incidents and their fixes)
 

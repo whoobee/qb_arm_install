@@ -80,7 +80,8 @@ click a direction (inner ring: forward / back / left / right; outer ring: tilt; 
 **home** in the middle, click twice; **open** / **close** the claw under it), or tick *keys*: arrows, PgUp / PgDn, Q / E. Jog steps are **not
 collision-checked** — watch the claw. To come back to a place: **+ save here** in the bar at the bottom of the image,
 a name, *as spot* (position) or *as pose* (position + orientation); its button under *go to* (click twice) takes the
-arm there. Exact values and dragging on a top view: Config → spots.
+arm there. Or click free table in the camera image: **go here** takes the claw above that point (height in cm, 10 by
+default; claw down or as it is). Exact values and dragging on a top view: Config → spots.
 
 ```bash
 ros2 service call /qb_arm_vision/jog qb_arm_vision_interfaces/srv/Jog "{translation: {z: 0.005}}"
