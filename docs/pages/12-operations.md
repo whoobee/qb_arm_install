@@ -2,7 +2,7 @@
 
 Runbook for daily use: starting and stopping, picking, calibration, recovery, safety rules and troubleshooting.
 
-**The control page: http://192.168.1.171:8081** — start / stop the cell, watch the arm and the claw (temperatures,
+**The control page: http://192.168.1.135:8081** — start / stop the cell, watch the arm and the claw (temperatures,
 current, angle — always in the status bar), detect objects with a typed prompt, pick an object by clicking it and
 place it by clicking the target (a menu at the mouse: into / on / next to, or a point on the table; plan first, then
 execute), tune speeds and pauses and edit the boundaries (Config), read the log with filters and search.
@@ -118,7 +118,7 @@ the reply says what blocked it. *"Nothing to hold within 30 s"* / *"Nobody took 
 
 ## Boundaries: where the camera looks, where the arm may never go
 
-**Editor** — **Config → boundaries** on the control page **http://192.168.1.171:8081**: a top view of the table
+**Editor** — **Config → boundaries** on the control page **http://192.168.1.135:8081**: a top view of the table
 made from the camera (the image projected onto the table plane, so rectangles are rectangles in robot coordinates;
 tall things look stretched). **+ vision zone** (green, drag its corners freely) / **+ no-go zone** (red box: drag
 to move, corners to resize; heights, turn and name in the side panel; the dashed outline is the MoveIt margin).
@@ -215,7 +215,7 @@ cd ~/prj/qb_arm_gripper && pio run -e gripper_ota -t upload
 | `trajectory controller lite6_traj_controller is unconfigured` (before: a bare `MoveIt error -4`, log: *Action client not connected … follow_joint_trajectory*) | rare since 2026-10-02: the pick executor configures / activates the controller itself before a motion when the arm is ready, and the spawner starts 8 s late. Still there: the message says why — *start-up did not finish*: `cell stop`, `cell start real`; *arm not ready*: recover the arm (Cell tab) |
 | `Invalid Trajectory: start point deviates` | the arm moved between planning and execution, or two executors are running: `cell status` |
 | `Claw did not reach X rad` after closing | expected when gripping (the object stops the fingers) |
-| Claw topics missing | ESP32 not powered / not on Wi-Fi: `ping 10.42.0.10`, `iw dev wlxec750c316d15 station dump` (is it connected to `qbarm-claw`?), `nmcli con show --active` (is `qbarm-claw` up?); agent: `systemctl status ros2-microros-agent` |
+| Claw topics missing | ESP32 not powered / not on Wi-Fi: `ping 10.42.0.10`, `iw dev wlp0s20f3 station dump` (is it connected to `qbarm-claw`?), `nmcli con show --active` (is `qbarm-claw` up?); agent: `systemctl status ros2-microros-agent` |
 | `qbarm-claw` won't start: dnsmasq "address in use" | an orphaned dnsmasq from a crashed NetworkManager: `pgrep -a dnsmasq`, kill the one with `10.42.0.1`, `sudo nmcli con up qbarm-claw` |
 | "Nothing grasped" although the object was held | the reply gives the stop angle and holding current; compare with the measured table (pick execution → grip check) and adjust `grip_empty_angle` / `grip_empty_current` (`ros2 param set`, live), or `check_grip false` |
 | Claw doesn't move, but answers | servo supply off (voltage ~3.3 V instead of ~7.3 V) |

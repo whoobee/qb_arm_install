@@ -20,7 +20,7 @@ flowchart TB
     I --> J["ros2-microros-agent.service"]
     J --> K["realtime group + limits"]
     K --> L["ESP32 tools: dialout, pipx esptool,<br/>PlatformIO + udev rules,<br/>clone qb_arm_gripper"]
-    L --> AP["claw access point qbarm-claw<br/>(USB Wi-Fi adapter with AP mode)"]
+    L --> AP["claw access point qbarm-claw<br/>(built-in Wi-Fi, AP mode)"]
     AP --> M["docs: qb-arm-docs.service"]
 ```
 
@@ -42,16 +42,21 @@ All run as user `whoobee`, restart on failure.
 ## The claw's access point `qbarm-claw`
 
 The claw's ESP32 sits on the arm among metal; through the building Wi-Fi it lost up to 75 % of its packets and
-firmware updates failed. qBArm therefore runs its own 2.4 GHz access point on a **second, USB Wi-Fi adapter**
-(TP-Link Archer T4U v3, RTL8812BU, in-kernel driver `rtw88_8822bu`, supports AP mode) placed next to the arm:
+firmware updates failed. qBArm therefore runs its own 2.4 GHz access point next to the arm. Since 2026-10-09 on its
+**built-in Wi-Fi** (Intel AX201, `wlp0s20f3`): qBArm reaches the LAN by cable, and the card can be a client or the
+access point on one channel only (the ESP32 is 2.4 GHz, the home Wi-Fi 5 GHz), so it gave up its Wi-Fi client link
+(.171, `NamNet5G` autoconnect off). Before, a **USB Wi-Fi adapter** ran it (TP-Link Archer T4U v3, RTL8812BU,
+`rtw88_8822bu`); its connection is kept as `qbarm-claw-tplink` (autoconnect off). Back to it: plug it in,
+`nmcli con down qbarm-claw && nmcli con up qbarm-claw-tplink`. The installer takes a USB adapter if one is plugged in,
+else the built-in card (`--claw-ap-if IFACE` to choose).
 
 | | |
 |---|---|
-| NetworkManager connection | `qbarm-claw` (autoconnect), interface `wlxec750c316d15`, mode AP, band bg, **channel 1** (the building uses 6 and 11), WPA2-PSK (CCMP) |
+| NetworkManager connection | `qbarm-claw` (autoconnect), interface `wlp0s20f3` (until 2026-10-09 `wlxec750c316d15`), mode AP, band bg, **channel 1** (the building uses 6 and 11), WPA2-PSK (CCMP) |
 | Addresses | `ipv4.method shared`: qBArm = `10.42.0.1/24`, DHCP by NetworkManager's dnsmasq; fixed addresses per board in `/etc/NetworkManager/dnsmasq-shared.d/qbarm-claw.conf` (claw `10.42.0.10`, spare `.11`) |
 | Password | generated at setup; in `~/prj/qb_arm_gripper/wifi.env` (`QBAG_WIFI_PASSWORD`, git-ignored) and the NetworkManager connection |
 | micro-ROS agent | unchanged: it listens on all interfaces, the claw talks to `10.42.0.1:8888` |
-| Result | 0 % loss, ~4 ms, RSSI about −42 dBm |
+| Result | USB adapter: 0 % loss, ~4 ms, RSSI about −42 dBm. Built-in card (2026-10-09): 0 % loss, ~3 ms (max 22), −55 dBm, 65 Mbit/s; claw state 18.5 Hz as before |
 
 The firmware only knows this network; after 30 s without Wi-Fi it restarts and joins again (the servo keeps its
 position meanwhile). **Don't `systemctl reload NetworkManager`**: it crashed on that once (assertion in
@@ -104,11 +109,11 @@ Use depth mode `NFOV_UNBINNED` (`WFOV_UNBINNED` at 30 fps crashes).
 
 | Host | Address | Ports |
 |---|---|---|
-| qBArm | **192.168.1.135** (LAN cable `enx00e04c360283`, DHCP — reserve it in the router); 192.168.1.171 (Wi-Fi `wlp0s20f3`, backup) | UDP 11811 discovery, UDP 8888 micro-ROS, TCP 8080 docs, TCP 8081 control, SSH |
+| qBArm | **192.168.1.135** (LAN cable `enx00e04c360283`, DHCP — reserve it in the router); no Wi-Fi client link since 2026-10-09 (the built-in Wi-Fi is the claw's access point) | UDP 11811 discovery, UDP 8888 micro-ROS, TCP 8080 docs, TCP 8081 control, SSH |
 | Lite6 controller | 192.168.1.23 | UFACTORY SDK |
 | hbh-ai | 192.168.1.220 | TCP 8770 vision server |
 | Claw ESP32 | 10.42.0.10 on `qbarm-claw` | UDP (micro-ROS client), TCP 3232 OTA |
-| `qbarm-claw` | 10.42.0.1/24 (qBArm, `wlxec750c316d15`) | DHCP/DNS (NetworkManager's dnsmasq) |
+| `qbarm-claw` | 10.42.0.1/24 (qBArm, `wlp0s20f3`) | DHCP/DNS (NetworkManager's dnsmasq) |
 
 **Wired LAN (2026-10-02).** qBArm has no Ethernet port; a USB-C hub/Ethernet combo (USB 2.0 hub `214b:7250` +
 Realtek RTL8152 `0bda:8152`, 100 Mbit) connects it to the router. Its udev rule `/etc/udev/rules.d/90-qbarm-usb-eth.rules`

@@ -234,7 +234,7 @@ current state against the zones (an arm already inside one makes every plan fail
 ### `control_center` — the control page (port 8081)
 
 `qb-arm-control.service` (installed by qb_arm_install, `--no-control` to skip) runs
-`scripts/control_center` permanently, independent of the cell: **http://192.168.1.171:8081**. Stdlib HTTP server +
+`scripts/control_center` permanently, independent of the cell: **http://192.168.1.135:8081**. Stdlib HTTP server +
 an rclpy node (`control_center`); the page is `web/control_center.html` (Vue 3, vendored in `web/vendor/`, so it works
 offline; a HUD style), Config → boundaries is `web/boundary_editor.html` in a frame.
 

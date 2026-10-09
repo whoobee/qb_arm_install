@@ -213,7 +213,7 @@ length and the right id, **skipping** anything else (e.g. the adapter echoing ou
 
 | Topic | Solution |
 |---|---|
-| Network | **`qbarm-claw`**, qBArm's own access point on a second USB Wi-Fi adapter next to the arm (see [infrastructure](11-infrastructure.md)). On the arm, through the building Wi-Fi, the board lost up to 75 % of its packets; on `qbarm-claw`: 0 % loss, ~4 ms, RSSI ≈ −42 dBm. No fallback network: without qBArm the claw has no agent anyway. |
+| Network | **`qbarm-claw`**, qBArm's own access point (its built-in Wi-Fi since 2026-10-09, before a USB adapter) next to the arm (see [infrastructure](11-infrastructure.md)). On the arm, through the building Wi-Fi, the board lost up to 75 % of its packets; on `qbarm-claw`: 0 % loss, ~4 ms, RSSI ≈ −42 dBm. No fallback network: without qBArm the claw has no agent anyway. |
 | Credentials | `wifi.env` (git-ignored): `QBAG_WIFI_SSID` (qbarm-claw), `QBAG_WIFI_PASSWORD`, `QBAG_AGENT_IP` (10.42.0.1), `QBAG_AGENT_PORT` (8888), `QBAG_OTA_PASSWORD`, `QBAG_OTA_HOST` (10.42.0.10). `scripts/load_env.py` (pre-script) turns them into `-D` defines; environment variables override. |
 | Address | DHCP from qBArm, fixed per MAC (claw 10.42.0.10) |
 | TX power | 8.5 dBm and modem sleep off: at full power these small boards distort (30–80 % loss on the desk) |

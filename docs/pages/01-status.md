@@ -37,8 +37,8 @@ flowchart LR
 | Pick executor | Working on the real arm: servo-mode check → pre-grasp → straight approach → close until the fingers stop → attach → lift; release. Puts the arm back into servo mode itself before every pick and recovers arm faults automatically, carrying the step on (not the e-stop). |
 | Table model | Plane from three claw touches (2026-10-02: flat against the robot base within 0.16°; the camera agrees within ~1.5 mm) used for object heights, fingertip clearance (3 mm) and MoveIt's collision table. |
 | Process management | `cell start sim\|real` / `cell stop`: one process group, clean starts and stops. |
-| Documentation | This site, `http://192.168.1.171:8080`, with live status. |
-| Control page | `http://192.168.1.171:8081` (qb-arm-control.service): start / stop the cell, arm state, claw live data and charts, detection with a typed prompt, boundaries editor, log. |
+| Documentation | This site, `http://192.168.1.135:8080`, with live status. |
+| Control page | `http://192.168.1.135:8081` (qb-arm-control.service): start / stop the cell, arm state, claw live data and charts, detection with a typed prompt, boundaries editor, log. |
 | Claw hardware + firmware | Mounted on the arm (20 mm plate, −45°), calibrated, micro-ROS over **qBArm's own access point** `qbarm-claw` (0 % loss, ~4 ms), OTA updates, servo heat guard. |
 | Grip | Closes to 1.2 rad (past pads-touching) and waits until the fingers stop; the servo pushes with the remaining error, limited by the firmware's stall guard. Grip check from stop position + servo current (INA219), on since 2026-10-01: servo position reads ~1.01 rad both empty and on a tape wall → INA219 current sensor ordered. |
 | Place (set an object down) | Working on the real arm: at a point, on / into / next to a detected object → above the spot, straight down to the height at which it was grasped above the surface (+3 mm), open, straight up. Tape roll placed 2 mm / 12 mm from the target; tape roll and screwdriver placed into a bin. Height is computed, not felt (no current sensing yet). |
@@ -81,7 +81,7 @@ In rough order of priority:
      three claw touches (flat within 0.16°; the old 0.87° tilt was a calibration error).
    - Control page: live camera video (MJPEG) with the tracked hands drawn in; two-column layout without scrolling
      on 1920×1080.
-   - Wired LAN (USB-C hub/Ethernet combo, 192.168.1.135): arm, ROS and the LAN over the cable, Wi-Fi .171 as backup;
+   - Wired LAN (USB-C hub/Ethernet combo, 192.168.1.135): arm, ROS and the LAN over the cable (no Wi-Fi backup since 2026-10-09: the built-in Wi-Fi runs the claw's access point);
      ROS limited to that one interface. Arm link 0.85 ms; control-loop overruns 37–47/min (Wi-Fi) → 2.6/min (cable +
      real-time priority, now also for cells started from the page).
    - Detector pairs colour + depth within 5 ms; 16 MB shared-memory segments tried and reverted (camera crash).
@@ -190,6 +190,7 @@ In rough order of priority:
 | 2026-10-06 | Control page reworked: one **plan / real** switch instead of doubled buttons; over the camera image a **jog pad** top left (home in the middle, claw open / close under it, ring of moves, ring of tilts, up/down and turn bars) and an **action bar** (go to spots, save here, save as home, hold this / give / back / release, stop); log and objects below the image; **Status** tab = old Cell + Claw tabs; the status bar's CELL chip starts / stops the cell, the **arm · recover** chip recovers the arm. |
 | 2026-10-06 | **C22 self-collision** on a side grasp: the Lite6 controller's own check (simplified links, no claw) stopped the wrist folded to −122.5°, which MoveIt found free. **joint5 limited to ±115° for planning** (`joint5_limit`, reach overlay unchanged; the wheel's side grasp is now "no reachable grasp" instead of a fault), and C22 / C23 are cleared but **not retried** (`auto_recover_no_retry`). |
 | 2026-10-09 | **Go here**: click free table in the camera image → the arm goes above that point (height in cm, default 10; claw down or as it is). Plan-only checked on the real cell (down / as it is OK, keep-out and out-of-reach refused). |
+| 2026-10-09 | Claw access point moved from the TP-Link USB adapter to qBArm's **built-in Wi-Fi** (same SSID, password, 10.42.0.1 — no firmware change): 0 % loss, ~3 ms, like before. The Wi-Fi client link (.171) is gone; qBArm is on its cable only (.135), Hermes' MCP URL now `http://192.168.1.135:8082/mcp`. |
 
 ## Lessons learned (incidents and their fixes)
 

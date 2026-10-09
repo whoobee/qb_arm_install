@@ -30,14 +30,14 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-    subgraph qbarm["qBArm - Ubuntu 24.04, ROS 2 Jazzy - 192.168.1.171 (Wi-Fi)"]
+    subgraph qbarm["qBArm - Ubuntu 24.04, ROS 2 Jazzy - 192.168.1.135 (cable)"]
         direction TB
         DS["Fast DDS discovery server<br/>UDP 11811 (systemd)"]
         MRA["micro-ROS agent<br/>UDP 8888 (systemd)"]
         CELL["the cell (cell start real)<br/>drivers, MoveIt, RViz, perception, pick"]
         DOC["docs server<br/>TCP 8080 (systemd)"]
         CTL["control center<br/>TCP 8081 (systemd)"]
-        AP["qbarm-claw access point<br/>USB Wi-Fi (Archer T4U), 10.42.0.1"]
+        AP["qbarm-claw access point<br/>built-in Wi-Fi (AX201), 10.42.0.1"]
     end
     subgraph gpu["hbh-ai - Pop!_OS, RTX 3060 - 192.168.1.220"]
         SRV["qb_arm_vision container<br/>FastAPI, TCP 8770"]
@@ -56,7 +56,7 @@ flowchart LR
 
 | Host | Address | Role |
 |---|---|---|
-| qBArm | `192.168.1.171` (DHCP, not reserved yet) | Everything ROS: drivers, MoveIt, RViz, perception client, pick logic, micro-ROS agent, discovery server, docs |
+| qBArm | `192.168.1.135` (LAN cable, DHCP, not reserved yet) | Everything ROS: drivers, MoveIt, RViz, perception client, pick logic, micro-ROS agent, discovery server, docs |
 | Lite6 controller | `192.168.1.23` | Arm controller; qBArm talks to it with the UFACTORY SDK inside the ros2_control hardware plugin |
 | hbh-ai | `192.168.1.220` (`hbh-ai.local`) | GPU inference server (shared with other services: ollama, immich, speech-to-speech on the second GPU) |
 | Claw ESP32-C3 | `10.42.0.10` on `qbarm-claw` (fixed by MAC) | Claw controller; micro-ROS client; OTA on port 3232 |
@@ -65,7 +65,7 @@ flowchart LR
 
 **ROS discovery.** ROS 2 nodes normally find each other with multicast. qBArm instead runs a *Fast DDS discovery
 server* ("ROS master"-like) on UDP 11811; every node points to it with `ROS_DISCOVERY_SERVER`
-(`ros_env.sh`). Other machines join with `ROS_DISCOVERY_SERVER=192.168.1.171:11811`. Side effect: new nodes and
+(`ros_env.sh`). Other machines join with `ROS_DISCOVERY_SERVER=192.168.1.135:11811`. Side effect: new nodes and
 CLI tools need ~10–15 s until they see all topics.
 
 ## Software components

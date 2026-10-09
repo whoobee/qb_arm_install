@@ -23,6 +23,7 @@ DO_CONTROL=1
 DO_MCP=1
 DO_HANDS=1
 DO_CLAW_AP=1
+CLAW_AP_IF=""
 GRIPPER_DIR="$HOME/prj/qb_arm_gripper"
 ACCEPT_K4A_EULA=0
 DDS_IFACE=""                 # --dds-iface; default: the interface of the default route
@@ -53,7 +54,9 @@ Usage: ./install.sh [options]
   --no-control          don't install the control center (qb-arm-control.service, port 8081)
   --no-mcp              don't install the MCP server for AI agents (qb-arm-mcp.service, port 8082)
   --no-hands            skip the hand tracker's Python environment (MediaPipe, ~/prj/venvs/hands)
-  --no-claw-ap          don't set up qbarm-claw, the access point for the claw (needs a USB Wi-Fi adapter)
+  --no-claw-ap          don't set up qbarm-claw, the access point for the claw
+  --claw-ap-if IFACE    run qbarm-claw on this Wi-Fi interface (default: a USB adapter if one is plugged in,
+                        else the built-in card - which then can't also be a Wi-Fi client: qBArm needs its cable)
   --dds-iface IFACE     the one network interface ROS (Fast DDS) uses besides loopback / shared memory
                         (default: the interface of the default route; on qBArm the LAN cable enx00e04c360283)
   -h, --help            show this help
@@ -79,6 +82,7 @@ while [ $# -gt 0 ]; do
         --no-mcp) DO_MCP=0 ;;
         --no-hands) DO_HANDS=0 ;;
         --no-claw-ap) DO_CLAW_AP=0 ;;
+        --claw-ap-if) CLAW_AP_IF="$2"; shift ;;
         --dds-iface) DDS_IFACE="$2"; shift ;;
         -h|--help) usage; exit 0 ;;
         *) echo "Unknown option: $1"; usage; exit 1 ;;
@@ -327,21 +331,39 @@ fi
 # ---------------------------------------------------------------------------
 if [ $DO_CLAW_AP -eq 1 ]; then
     # The claw's ESP32 sits on the arm among metal: through the building Wi-Fi it lost up to 75 % of its packets.
-    # A second (USB) Wi-Fi adapter on qBArm runs a dedicated 2.4 GHz access point next to the arm instead.
-    step "Claw access point qbarm-claw (second Wi-Fi adapter, 10.42.0.1/24)"
+    # qBArm runs a dedicated 2.4 GHz access point next to the arm instead: on a USB Wi-Fi adapter (TP-Link Archer
+    # T4U v3 until 2026-10-09) or, with qBArm on its cable, on the built-in card (Intel AX201 since 2026-10-09:
+    # 0 % loss, ~3 ms, like the adapter). The built-in card can be a client or the access point on one channel
+    # only, and the ESP32 is 2.4 GHz - so it gives up its Wi-Fi client link.
+    step "Claw access point qbarm-claw (10.42.0.1/24)"
     apt_install iw
-    AP_IF=""
-    for dev in /sys/class/net/wlx*; do
-        [ -e "$dev" ] || continue
-        dev=$(basename "$dev")
-        phy=$(iw dev "$dev" info 2>/dev/null | awk '/wiphy/{print "phy"$2}')
-        if [ -n "$phy" ] && iw phy "$phy" info | sed -n '/Supported interface modes/,/Band/p' | grep -q '\* AP$'; then
-            AP_IF=$dev; break
-        fi
-    done
+    ap_ok() {     # interface supports access point mode
+        local phy; phy=$(iw dev "$1" info 2>/dev/null | awk '/wiphy/{print "phy"$2}')
+        [ -n "$phy" ] && iw phy "$phy" info | sed -n '/Supported interface modes/,/Band/p' | grep -q '\* AP$'
+    }
+    AP_IF="$CLAW_AP_IF"
+    if [ -n "$AP_IF" ] && ! ap_ok "$AP_IF"; then
+        info "$AP_IF: no such Wi-Fi interface, or no access point support"; AP_IF=""
+    fi
+    if [ -z "$AP_IF" ] && [ -z "$CLAW_AP_IF" ]; then
+        for dev in /sys/class/net/wlx* /sys/class/net/wl*; do      # a USB adapter first, then the built-in card
+            [ -e "$dev" ] || continue
+            dev=$(basename "$dev")
+            if ap_ok "$dev"; then AP_IF=$dev; break; fi
+        done
+    fi
     if [ -z "$AP_IF" ]; then
-        info "no USB Wi-Fi adapter with access point support found - plug one in (e.g. TP-Link Archer T4U v3) and re-run"
+        info "no Wi-Fi interface with access point support found - skipping qbarm-claw"
     else
+        if [[ "$AP_IF" != wlx* ]]; then
+            # the built-in card: no Wi-Fi client connections on it any more (they would take it over)
+            nmcli -t -f NAME,TYPE con show | awk -F: '$2 == "802-11-wireless" && $1 != "qbarm-claw" {print $1}' |
+                while read -r con; do
+                    [ "$(nmcli -g 802-11-wireless.mode con show "$con")" = ap ] && continue
+                    sudo nmcli con modify "$con" connection.autoconnect no
+                    info "Wi-Fi connection '$con': autoconnect off ($AP_IF is the claw's access point now)"
+                done
+        fi
         sudo install -m 644 "$HERE/config/qbarm-claw-dnsmasq.conf" /etc/NetworkManager/dnsmasq-shared.d/qbarm-claw.conf
         # The password lives in the gripper's (git-ignored) wifi.env; create one if there is none yet
         ENV_FILE="$GRIPPER_DIR/wifi.env"
