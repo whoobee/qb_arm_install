@@ -118,8 +118,12 @@ the reply says what blocked it. *"Nothing to hold within 30 s"* / *"Nobody took 
 
 ## Live hand tracking (Leap Motion Controller)
 
-**Status 2026-10-09: built, not yet tried with a live hand** — the sensor on the wall (looking at the robot, the
-hand 26–43 cm away) hardly tracks; it is meant to lie flat, looking up, the hand 10–30 cm above it.
+**Status 2026-10-09:** the sensor lies flat on the table at about (0.45, 0.28), looking up — on the wall (looking
+at the robot, the hand 26–43 cm away) it hardly tracked. It lies turned around, so the tracking service's
+orientation is set to *inverted* (`leapctl config orientation inverted`; stored in
+`/etc/ultraleap/hand_tracker_config.json`) — without that it saw the hand clearly in its images but tracked
+nothing. Hold the hand 15–25 cm above it, over its middle (confidence 0.6–0.76 there, 0.1–0.3 at the edges). The
+keep-out zone `leap` is a column over it up to 45 cm: the arm never comes where the hand is.
 
 - **Engage:** make a fist over the sensor, then open the hand (within 1.5 s). The control page's **live hand** chip
   turns *ENGAGED*. The claw now follows your hand: its movement (same direction in the room) and its rotation,
