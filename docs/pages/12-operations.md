@@ -116,6 +116,23 @@ Messages: *"No hand to take from / to give to"* — no hand was still in the zon
 the camera sees it). *"Your hand at (…) is out of the arm's reach"* — no natural, collision-free pose in front of it;
 the reply says what blocked it. *"Nothing to hold within 30 s"* / *"Nobody took … within 30 s"* — it went home.
 
+## Live hand tracking (Leap Motion Controller)
+
+**Status 2026-10-09: built, not yet tried with a live hand** — the sensor on the wall (looking at the robot, the
+hand 26–43 cm away) hardly tracks; it is meant to lie flat, looking up, the hand 10–30 cm above it.
+
+- **Engage:** make a fist over the sensor, then open the hand (within 1.5 s). The control page's **live hand** chip
+  turns *ENGAGED*. The claw now follows your hand: its movement (same direction in the room) and its rotation,
+  relative to where hand and claw were at that moment; at most 0.15 m/s.
+- **Claw:** pinch thumb and index (the other fingers open) — the claw grips like a pick; release — it opens.
+- **Stop:** fist and open again, or take the hand away (or a hand the sensor isn't sure of): the arm stops at once.
+- It keeps the claw inside the vision workspace, at least 3 cm above the table and within reach; MoveIt Servo
+  slows and stops it near itself, the table, the keep-out zones and joint limits.
+- While engaged, picks, places, home, go-to, jog and handover are refused (both would drive the arm).
+- Off: click the **live hand** chip (gestures ignored), or start the cell with `leap:=false`.
+- Tracking service: `systemctl status ultraleap-hand-tracking-service`, `leapctl devices`; it only tracks once
+  its EULA is accepted (`leapctl eula`, A).
+
 ## Boundaries: where the camera looks, where the arm may never go
 
 **Editor** — **Config → boundaries** on the control page **http://192.168.1.135:8081**: a top view of the table

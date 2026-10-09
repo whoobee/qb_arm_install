@@ -191,6 +191,7 @@ In rough order of priority:
 | 2026-10-06 | **C22 self-collision** on a side grasp: the Lite6 controller's own check (simplified links, no claw) stopped the wrist folded to −122.5°, which MoveIt found free. **joint5 limited to ±115° for planning** (`joint5_limit`, reach overlay unchanged; the wheel's side grasp is now "no reachable grasp" instead of a fault), and C22 / C23 are cleared but **not retried** (`auto_recover_no_retry`). |
 | 2026-10-09 | **Go here**: click free table in the camera image → the arm goes above that point (height in cm, default 10; claw down or as it is). Plan-only checked on the real cell (down / as it is OK, keep-out and out-of-reach refused). |
 | 2026-10-09 | Claw access point moved from the TP-Link USB adapter to qBArm's **built-in Wi-Fi** (same SSID, password, 10.42.0.1 — no firmware change): 0 % loss, ~3 ms, like before. The Wi-Fi client link (.171) is gone; qBArm is on its cable only (.135), Hermes' MCP URL now `http://192.168.1.135:8082/mcp`. |
+| 2026-10-09 | **Live hand tracking** with a Leap Motion Controller (original) started: Ultraleap Hyperion 6.2 runs it on 24.04; `leap_teleop` → MoveIt Servo (fist-open engages, clutch position + rotation, pinch grips, workspace / table / reach limits, Servo collision checks), executor interlock, control-page chip. Not yet tried live: on the wall, 26–43 cm from the hand, the sensor hardly tracks — to be laid flat, looking up. |
 
 ## Lessons learned (incidents and their fixes)
 

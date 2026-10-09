@@ -411,6 +411,25 @@ mcp_servers:
 Tested 2026-10-05 with the `mcp` client: no token → 401; 20 tools listed; `status` / `list_objects` / `list_places`;
 "the tape roll" → `tape_roll_1`; `stop` answered in 0.2 s while a `look` took 4.1 s in another session.
 
+### `leap_teleop` — live hand tracking (Leap Motion Controller → MoveIt Servo)
+
+Reads the Leap (Ultraleap Hyperion 6.2 tracking service, LeapC Python bindings in `~/prj/venvs/leap`; the node
+re-executes itself there) and drives the arm through **MoveIt Servo** (`config/servo.yaml`, started by
+`lite6_moveit.launch.py`, `servo:=false` to leave it out). Logic in `qb_arm/teleop.py` (no ROS, tested offline):
+
+| Part | What |
+|---|---|
+| Mounting | `leap_x_axis`, `leap_y_axis`: the world directions of the Leap's long side and optical axis; the claw moves the way the hand moves in the room. 2026-10-09: on the right wall at ~(0.30, 0.75, 0.20), looking at −y (keep-out zone `leap`) |
+| Engage | fist (grab ≥ 0.85 for 0.15 s), then open (grab ≤ 0.25) within 1.5 s; again = disengage; while the fist is made the claw holds still |
+| Clutch | at engage palm and claw poses are paired; target = claw pose + `scale` × palm displacement, rotated by the palm's rotation (`rotation_scale`, `follow_rotation`) |
+| Limits | target clamped to the vision workspace polygons, `min_height`…`max_height`, `min_reach`…`max_reach`; twist = `gain` × error, capped at `max_speed` / `max_turn_speed` |
+| Claw | pinch ≥ 0.85 for 0.12 s with grab < 0.6 → `/claw/command` 1.2 (grip); pinch ≤ 0.35 → 0 |
+| Safety | no hand, or confidence < `min_confidence` (0.6), for `hand_lost_after` (0.15 s) → zero twist, Servo paused; Servo itself: collisions (self, table, keep-outs, detected objects — not the octomap), joint limits (joint5 ±115°), singularities; incoming-command timeout 0.1 s |
+| Servo pause | paused at start and whenever disengaged (`~/pause_servo`): unpaused it would override the pick executor's trajectories |
+
+Topics: `/qb_arm/teleop/state` (JSON, 10 Hz), `/qb_arm/teleop/engaged` (latched; the pick executor refuses real
+motions while true); service `/qb_arm/teleop/enable` (the control page's **live hand** chip).
+
 ### `show_boundaries`
 
 `ros2 run qb_arm show_boundaries [--output boundaries.png]`: the live camera image with the vision workspace (green,

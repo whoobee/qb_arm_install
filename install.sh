@@ -22,6 +22,7 @@ DO_DOCS=1
 DO_CONTROL=1
 DO_MCP=1
 DO_HANDS=1
+DO_LEAP=1
 DO_CLAW_AP=1
 CLAW_AP_IF=""
 GRIPPER_DIR="$HOME/prj/qb_arm_gripper"
@@ -54,6 +55,7 @@ Usage: ./install.sh [options]
   --no-control          don't install the control center (qb-arm-control.service, port 8081)
   --no-mcp              don't install the MCP server for AI agents (qb-arm-mcp.service, port 8082)
   --no-hands            skip the hand tracker's Python environment (MediaPipe, ~/prj/venvs/hands)
+  --no-leap             skip the Leap Motion Controller (Ultraleap tracking service, ~/prj/venvs/leap)
   --no-claw-ap          don't set up qbarm-claw, the access point for the claw
   --claw-ap-if IFACE    run qbarm-claw on this Wi-Fi interface (default: a USB adapter if one is plugged in,
                         else the built-in card - which then can't also be a Wi-Fi client: qBArm needs its cable)
@@ -81,6 +83,7 @@ while [ $# -gt 0 ]; do
         --no-control) DO_CONTROL=0 ;;
         --no-mcp) DO_MCP=0 ;;
         --no-hands) DO_HANDS=0 ;;
+        --no-leap) DO_LEAP=0 ;;
         --no-claw-ap) DO_CLAW_AP=0 ;;
         --claw-ap-if) CLAW_AP_IF="$2"; shift ;;
         --dds-iface) DDS_IFACE="$2"; shift ;;
@@ -445,6 +448,34 @@ if [ "$DO_HANDS" = 1 ]; then
     [ -f "$HANDS/models/hand_landmarker.task" ] || curl -fsSL -o "$HANDS/models/hand_landmarker.task" \
         https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task
     "$HANDS/bin/python" -c "import mediapipe, numpy; print('mediapipe', mediapipe.__version__, 'numpy', numpy.__version__)"
+fi
+
+if [ "$DO_LEAP" = 1 ]; then
+    # qb_arm leap_teleop (live hand tracking): Ultraleap Hyperion (the tracking service, LeapC) - repo.ultraleap.com
+    # is gone, the .deb is on Ultraleap's download page (works with the original Leap Motion Controller on 24.04) -
+    # and the LeapC Python bindings, built for this Python, in their own venv (system site packages for ROS).
+    LEAP_VERSION=6.2.0
+    step "Leap Motion Controller (Ultraleap Hyperion $LEAP_VERSION, ~/prj/venvs/leap)"
+    LEAP_DEB="$HOME/prj/leap/tracking-software-linux-x64-$LEAP_VERSION.deb"
+    mkdir -p "$HOME/prj/leap"
+    [ -f "$LEAP_DEB" ] || curl -fL -o "$LEAP_DEB" \
+        "https://s3.eu-west-1.amazonaws.com/downloads.ultraleap.com/software/tracking-software/$LEAP_VERSION/tracking-software-linux-x64-$LEAP_VERSION.deb"
+    sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "$LEAP_DEB"
+    echo /usr/lib/ultraleap-hand-tracking-service | sudo tee /etc/ld.so.conf.d/ultraleap.conf >/dev/null
+    sudo ldconfig
+    # a sensor plugged in before the install keeps root-only permissions until its udev rule is applied
+    sudo udevadm trigger --action=add --attr-match=idVendor=f182 || true
+    sudo systemctl restart ultraleap-hand-tracking-service
+    LEAP_PY="$HOME/prj/leap/leapc-python-bindings"
+    [ -d "$LEAP_PY" ] || git clone -q https://github.com/ultraleap/leapc-python-bindings.git "$LEAP_PY"
+    LEAP_VENV="$HOME/prj/venvs/leap"
+    python3 -m venv --system-site-packages "$LEAP_VENV"
+    "$LEAP_VENV/bin/pip" install -q build cffi
+    (cd "$LEAP_PY" && "$LEAP_VENV/bin/python" -m build -q leapc-cffi >/dev/null)
+    "$LEAP_VENV/bin/pip" install -q "$LEAP_PY"/leapc-cffi/dist/leapc_cffi-*.tar.gz
+    "$LEAP_VENV/bin/pip" install -q --no-deps -e "$LEAP_PY/leapc-python-api"
+    "$LEAP_VENV/bin/python" -c "import leap; print('LeapC bindings OK')"
+    info "The tracking service only tracks once its EULA is accepted: run 'leapctl eula' (press A to accept)"
 fi
 
 # ---------------------------------------------------------------------------
